@@ -1,0 +1,90 @@
+diff --git a/DVRRDK_03.00.00.00/dvr_rdk/mcfw/src_bios6/links_m3vpss/capture/captureLink_drv.c b/DVRRDK_03.00.00.00/dvr_rdk/mcfw/src_bios6/links_m3vpss/capture/captureLink_drv.c
+index ad2c2b5..cdee893 100755
+--- a/DVRRDK_03.00.00.00/dvr_rdk/mcfw/src_bios6/links_m3vpss/capture/captureLink_drv.c
++++ b/DVRRDK_03.00.00.00/dvr_rdk/mcfw/src_bios6/links_m3vpss/capture/captureLink_drv.c
+@@ -1134,10 +1134,12 @@ Int32 CaptureLink_drvConfigureVideoDecoder(CaptureLink_Obj * pObj, UInt32 timeou
+     UInt32 instId;
+ 
+     CaptureLink_InstObj *pInst;
++    Vps_printf("=== CaptureLink_drvConfigureVideoDecoder === pObj->createArgs.numVipInst = %d************\n", pObj->createArgs.numVipInst);
+ 
+     for (instId = 0; instId < pObj->createArgs.numVipInst; instId++)
+     {
+         pInst = &pObj->instObj[instId];
++        Vps_printf(" pInst->maxHeight = %d pInst->maxWidth = %d",pInst->maxHeight,pInst->maxWidth);
+ 
+         if (pInst->videoDecoderHandle == NULL)
+             return FVID2_SOK;
+diff --git a/DVRRDK_03.00.00.00/dvr_rdk/mcfw/src_bios6/links_m3vpss/display/displayLink_drv.c b/DVRRDK_03.00.00.00/dvr_rdk/mcfw/src_bios6/links_m3vpss/display/displayLink_drv.c
+index f2723c2..989b87a 100755
+--- a/DVRRDK_03.00.00.00/dvr_rdk/mcfw/src_bios6/links_m3vpss/display/displayLink_drv.c
++++ b/DVRRDK_03.00.00.00/dvr_rdk/mcfw/src_bios6/links_m3vpss/display/displayLink_drv.c
+@@ -828,6 +828,11 @@ Int32 DisplayLink_drvDisplayCreate(DisplayLink_Obj * pObj)
+                pFormat->pitch[0]);
+ #endif
+ 
++    Vps_printf(" %d: DISPLAY: %d: Window size %dx%d, %dB",
++                  Utils_getCurTimeInMsec(),
++                  pObj->displayInstId, pFormat->width, pFormat->height,
++                  pFormat->pitch[0]);
++
+     pObj->displayHndl = FVID2_create(FVID2_VPS_DISP_DRV,
+                                      pObj->displayInstId,
+                                      &pObj->displayCreateArgs,
+diff --git a/DVRRDK_03.00.00.00/dvr_rdk/mcfw/src_bios6/links_m3vpss/swMs/swMsLink_drv.c b/DVRRDK_03.00.00.00/dvr_rdk/mcfw/src_bios6/links_m3vpss/swMs/swMsLink_drv.c
+index d029ae4..0ad6f37 100755
+--- a/DVRRDK_03.00.00.00/dvr_rdk/mcfw/src_bios6/links_m3vpss/swMs/swMsLink_drv.c
++++ b/DVRRDK_03.00.00.00/dvr_rdk/mcfw/src_bios6/links_m3vpss/swMs/swMsLink_drv.c
+@@ -1244,6 +1244,8 @@ Int32 SwMsLink_drvCreateOutInfo(SwMsLink_Obj * pObj, UInt32 outRes)
+ 
+     System_getOutSize(pObj->createArgs.initOutRes, &pChInfo->width, &pChInfo->height);
+ 
++    Vps_printf("pChInfo->width = %d, pChInfo->height = %d\n",pChInfo->width,pChInfo->height);
++
+     pChInfo->pitch[0] = bufferPitch;
+     pChInfo->pitch[1] = pChInfo->pitch[2] = 0;
+ 
+@@ -1271,6 +1273,7 @@ Int32 SwMsLink_drvCreateOutInfo(SwMsLink_Obj * pObj, UInt32 outRes)
+     pObj->outFrameFormat.width = pChInfo->width;
+     pObj->outFrameFormat.height = pChInfo->height;
+ 
++    Vps_printf("=== pObj->createArgs.numOutBuf = %d\n",pObj->createArgs.numOutBuf);
+     for (frameId = 0; frameId < pObj->createArgs.numOutBuf; frameId++)
+     {
+         /* alloc buffer of max possible size but use only what is needed for a
+@@ -2194,6 +2197,7 @@ Int32 SwMsLink_drvCreate(SwMsLink_Obj * pObj, SwMsLink_CreateParams * pPrm)
+ 
+     cpuRev = Vps_platformGetCpuRev();
+ 
++    Vps_printf("SSSSSSSSSWWWWWWWWWWMMMMMMMSSSSSSSSS pObj->inQueInfo.numCh = %d\n",pObj->inQueInfo.numCh);
+     for (chId = 0; chId < pObj->inQueInfo.numCh; chId++)
+     {
+         if (cpuRev < VPS_PLATFORM_CPU_REV_2_0)
+diff --git a/DVRRDK_03.00.00.00/dvr_rdk/mcfw/src_linux/mcfw_api/ti_vdis.c b/DVRRDK_03.00.00.00/dvr_rdk/mcfw/src_linux/mcfw_api/ti_vdis.c
+index ec05030..e407c7c 100755
+--- a/DVRRDK_03.00.00.00/dvr_rdk/mcfw/src_linux/mcfw_api/ti_vdis.c
++++ b/DVRRDK_03.00.00.00/dvr_rdk/mcfw/src_linux/mcfw_api/ti_vdis.c
+@@ -137,6 +137,7 @@ Void Vdis_params_init(VDIS_PARAMS_S * pContext)
+         pContext->mosaicParams[i].displayWindow.height  = height;
+ 
+         pContext->mosaicParams[i].numberOfWindows       = 1;
++
+         pContext->mosaicParams[i].outputFPS             = 30;
+ 
+         for(j=0;j<pContext->mosaicParams[i].numberOfWindows;j++)
+@@ -154,6 +155,7 @@ Void Vdis_params_init(VDIS_PARAMS_S * pContext)
+     /* Configure output Info for vencs */
+ 
+     pContext->tiedDevicesMask = VDIS_VENC_HDMI | VDIS_VENC_DVO2;
++
+     pContext->enableConfigExtVideoEncoder = TRUE;
+ 
+ #if defined(TI814X_DVR) || defined(TI810X_DVR)
+@@ -180,6 +182,7 @@ Void Vdis_params_init(VDIS_PARAMS_S * pContext)
+     pContext->deviceParams[VDIS_DEV_SD].outputInfo.vencNodeNum = VDIS_VENC_SD;
+     pContext->deviceParams[VDIS_DEV_SD].outputInfo.aFmt = VDIS_A_OUTPUT_COMPOSITE;
+     pContext->deviceParams[VDIS_DEV_SD].outputInfo.dvoFmt = VDIS_DVOFMT_TRIPLECHAN_DISCSYNC;
++    //pContext->deviceParams[VDIS_DEV_SD].outputInfo.dvoFmt = VDIS_DVOFMT_SINGLECHAN;
+     pContext->deviceParams[VDIS_DEV_SD].outputInfo.dataFormat = SYSTEM_DF_RGB24_888;
+ 
+ #if defined(TI_816X_BUILD) || defined (TI_8107_BUILD)

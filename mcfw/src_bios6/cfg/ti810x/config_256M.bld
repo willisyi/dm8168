@@ -1,0 +1,663 @@
+/*
+ *  ======== config.bld ========
+ *  Build configuration script for HDVPSS drivers
+ */
+
+/* load the required modules for the configuration */
+
+var M3 = xdc.useModule('ti.targets.arm.elf.M3');
+var C674 = xdc.useModule('ti.targets.elf.C674');
+
+var buildReleaseConfig = true;
+
+/* configure  the options for the M3 targets     */
+
+/* M3 compiler directory path                    */
+M3.rootDir = java.lang.System.getenv("CGTOOLS");
+
+/* linker options */
+
+M3.lnkOpts.suffix += " --zero_init=off ";
+M3.lnkOpts.suffix += " --dynamic --retain=_Ipc_ResetVector";
+
+/* compiler options                                */
+M3.ccOpts.suffix += "  --gcc -DTI_814X_BUILD -DPLATFORM_EVM_SI -DSYSLINK_BUILD_RTOS -DUSE_SYSLINK_NOTIFY=0 -DUTILS_ASSERT_ENABLE";
+
+/* set default platform and list of all interested
+ * platforms for M3
+ */
+M3.platforms = [
+                        "ti.platforms.evmTI814X:core0",
+                        "ti.platforms.evmTI814X:core1",
+               ];
+
+/* Select the default platform
+ *
+ * Making core1 as defualt core configuration to be used
+ *  Core 0 ==    Ducati.M3.VIDEO
+ *  Core 1 ==    Ducati.M3.VPS
+ */
+M3.platform = M3.platforms[1];
+
+/* configure  the options for the C674 targets     */
+
+/* C674 compiler directory path                    */
+C674.rootDir = java.lang.System.getenv("CGTOOLS_DSP");
+
+/* linker options */
+
+C674.lnkOpts.suffix += " --zero_init=off ";
+C674.lnkOpts.suffix += " --dynamic --retain=_Ipc_ResetVector";
+
+/* compiler options                                */
+C674.ccOpts.suffix += " -DTI_814X_BUILD -DPLATFORM_EVM_SI -DSYSLINK_BUILD_RTOS -DUSE_SYSLINK_NOTIFY=0";
+
+C674.platforms = ["ti.platforms.evmTI816X:plat"];
+C674.platform = C674.platforms[0];
+
+/* list interested targets in Build.targets array  */
+Build.targets = [
+                    M3,
+                    C674,
+                ];
+
+
+var KB=1024;
+var MB=KB*KB;
+var GB=KB*KB*KB;
+
+var DDR3_ADDR                = 0x80000000;
+var DDR3_SIZE                = 1*GB;
+
+
+var DDR_REG1_SIZE = 128*MB;
+var DDR_REG0_SIZE = 256*MB - DDR_REG1_SIZE;
+
+
+var DDR3_ADDR_REG0_START = 0x80000000;
+var DDR3_ADDR_REG0_END   = DDR3_ADDR_REG0_START + DDR_REG0_SIZE;
+
+
+var DDR3_ADDR_REG1_START = 0xB8000000;
+var DDR3_ADDR_REG1_END   = 0xC0000000;
+
+/*TILER start address has to be 128MB aligned*/
+var TILER_START_ADDR = 0xB8000000;
+
+
+var OCMC0_ADDR                 = 0x40300000;
+/*OCMC1 exisits only for TI816X*/
+var OCMC1_ADDR                 = 0x40400000;
+var OCMC_SIZE                  = 256*KB;
+
+var OCMC0_VIDEO_M3_SIZE        = 16*KB;
+var OCMC0_VPSS_M3_SIZE         = OCMC_SIZE - OCMC0_VIDEO_M3_SIZE;
+
+var OCMC0_VIDEO_M3_ADDR        = OCMC0_ADDR;
+var OCMC0_VPSS_M3_ADDR          = OCMC0_VIDEO_M3_ADDR + OCMC0_VIDEO_M3_SIZE;
+
+
+
+var OCMC0_RUN_ADDR             = 0x00300000;
+var OCMC0_VIDEO_M3_RUN         = OCMC0_RUN_ADDR;
+var OCMC0_VPSS_M3_RUN          = OCMC0_VIDEO_M3_RUN + OCMC0_VIDEO_M3_SIZE;
+
+var M3_L2_RAM              = 0x55024000;
+var M3_L2_RAM_SIZE         = 48*KB;
+
+var M3_L2_RAM_MAPPED          = 0x20004000;
+
+/* first 128MB*/
+var LINUX_SIZE                 = 90*MB;
+var SR1_SIZE                   = 14*MB - 32*KB;
+var VIDEO_M3_CODE_SIZE         = 2*MB + 512*KB;
+var VIDEO_M3_DATA_SIZE         = 0*MB + 96*KB;
+var VIDEO_M3_BSS_SIZE          = 5*MB + 864*KB;
+var DSS_M3_CODE_SIZE           = 592*KB;
+var DSS_M3_DATA_SIZE           = 1*MB + 384*KB;
+var DSS_M3_BSS_SIZE            = 13*MB + 656*KB;
+
+/* second 128MB */
+var TILER_SIZE                 = 32*MB; /* Reducing this to fix Vid Frame Alloc failures. Need to fix */ /* MUST be aligned on 128MB boundary */
+var SR2_FRAME_BUFFER_SIZE      = 87*MB + 320*KB;
+
+
+var SR0_SIZE                   = 6*MB - 256*KB;
+var VIDEO_M3_EXCEPTION_CTX_SIZE = 128*KB;
+var VPSS_M3_EXCEPTION_CTX_SIZE = 128*KB;
+var HDVPSS_DESC_SIZE           = 2*MB;
+var HDVPSS_SHARED_SIZE         = 512*KB ;
+var NOTIFY_SHARED_SIZE         = 128*KB;
+var REMOTE_DEBUG_SIZE          = 64*KB;
+
+
+print ("Memory Map - 256MB DDR, 90MB Linux");
+
+print ("  0x80000000     +-------------------+");
+print ("         ^       |                   |");
+print ("         |       |  " + (LINUX_SIZE / MB) + " MB            | Linux");
+print ("         |       |                   |");
+print ("         |       +-------------------+");
+print ("         |       |  " + (SR1_SIZE / MB) + "MB       | (SR1) Bitstream buffer");
+print ("         |       |                   | Cached on A8. Cached on M3, although access by DMAs");
+print ("         |       +-------------------+  ");          
+print ("         |       |   " + (VIDEO_M3_CODE_SIZE / MB) + " MB          | Video M3 Code");
+print ("         |       +-------------------+");
+print ("         |       |   " + (VIDEO_M3_BSS_SIZE / MB) + " MB         | Video M3 BSS");
+print ("         |       +-------------------+");
+print ("         |       |   " + (VIDEO_M3_DATA_SIZE / MB) + " MB      | Video  M3 Data");
+print ("         |       +-------------------+");
+print ("         |       |   " + (DSS_M3_CODE_SIZE/ MB) + " MB            | VPSS  M3 Code");
+print ("         |       +-------------------+");
+print ("         |       |   " + (DSS_M3_BSS_SIZE/ MB) + " MB      | VPSS  M3 BSS");
+print ("         |       +-------------------+");
+print ("         |       |   " + (DSS_M3_DATA_SIZE/ MB) + " MB        | VPSS  M3 Data");
+print ("       256 MB    +-------------------+");
+print ("         |       |   " + (TILER_SIZE / MB) + " MB           | Tiled 8-bit + 16-bit region");
+print ("         |       +-------------------+");
+print ("         |       |  " + (SR2_FRAME_BUFFER_SIZE / MB) + " MB       | (SR2) Frame Buffer Region - <VPSS - Video M3 Frame Buf>");
+print ("         |       +-------------------+  ");
+print ("         |       |                   |");
+print ("         |       |  " + (SR0_SIZE / MB) + " MB          | (SR0) Syslink MsgQ/IPC List MP - <Non-cached on M3>");
+print ("         |       +-------------------+");
+print ("         |       |  " + (VIDEO_M3_EXCEPTION_CTX_SIZE / KB) + " KB           | Video M3 exception context");
+print ("         |       +-------------------+  ");
+print ("         |       |  " + (VPSS_M3_EXCEPTION_CTX_SIZE / KB) + "KB            | Vpss M3 exception context");
+print ("         |       +-------------------+  ");
+print ("         |       |  " + (HDVPSS_DESC_SIZE / MB) + " MB             | VPSS M3 - VPDMA Descriptor");
+print ("         |       +-------------------+");
+print ("         |       |  " + (HDVPSS_SHARED_SIZE / MB) + " MB           | VPSS M3 - FBDev Shared Memory");
+print ("         |       +-------------------+");
+print ("         |       |  " + (NOTIFY_SHARED_SIZE / MB) + " MB         | Host - VPSS M3 Notify(For FBDev)");
+print ("         |       +-------------------+");
+print ("         v       |  " + (REMOTE_DEBUG_SIZE / MB) + " MB        | Remote Debug Print");
+print ("   0x90000000    +-------------------+");
+
+
+
+/* first 128MB */
+var LINUX_ADDR                 = DDR3_ADDR_REG0_START;
+var SR1_ADDR                   = LINUX_ADDR                 + LINUX_SIZE;
+
+var VIDEO_M3_CODE_ADDR         = SR1_ADDR                 + SR1_SIZE;
+var VIDEO_M3_DATA_ADDR         = VIDEO_M3_CODE_ADDR         + VIDEO_M3_CODE_SIZE;
+var VIDEO_M3_BSS_ADDR          = VIDEO_M3_DATA_ADDR         + VIDEO_M3_DATA_SIZE;
+/*VIDEO_M3_BSS_ADDR_RUN is the translated address for VIDEO_M3_BSS_ADDR in the 
+  0x20000000 region. Its assumed VIDEO_M3_BSS_ADDR lies in 0x80000000 region*/
+var VIDEO_M3_BSS_ADDR_RUN      = VIDEO_M3_BSS_ADDR - 0x80000000 + 0x20000000;
+ 
+var DSS_M3_CODE_ADDR          = VIDEO_M3_BSS_ADDR         + VIDEO_M3_BSS_SIZE;
+var DSS_M3_DATA_ADDR          = DSS_M3_CODE_ADDR           + DSS_M3_CODE_SIZE;
+var DSS_M3_BSS_ADDR           = DSS_M3_DATA_ADDR           + DSS_M3_DATA_SIZE;
+
+/*DSS_M3_BSS_RUN is the translated address for DSS_M3_DATA_ADDR in the 
+  0x20000000 region. Its assumed DSS_M3_BSS_ADDR lies in 0x80000000 region*/
+var DSS_M3_BSS_RUN            = DSS_M3_BSS_ADDR - 0x80000000 + 0x20000000;
+
+if ((DSS_M3_BSS_ADDR + DSS_M3_BSS_SIZE) > DDR3_ADDR_REG0_START + DDR_REG0_SIZE)
+{
+  throw xdc.$$XDCException("MEMORY_MAP OVERFLOW ERROR ",
+                           "\nRegion End: " + "0x" + java.lang.Long.toHexString(TILER_START_ADDR) + 
+                           "\nActual End: " + "0x" + java.lang.Long.toHexString(DSP_DATA_ADDR + DSP_DATA_SIZE));
+}
+
+var TILER_ADDR             = TILER_START_ADDR;
+var SR2_FRAME_BUFFER_ADDR  = TILER_ADDR  + TILER_SIZE;
+var SR0_ADDR               = SR2_FRAME_BUFFER_ADDR + SR2_FRAME_BUFFER_SIZE;
+var VIDEO_M3_EXCEPTION_CTX_ADDR = SR0_ADDR                  + SR0_SIZE;
+var VPSS_M3_EXCEPTION_CTX_ADDR  = VIDEO_M3_EXCEPTION_CTX_ADDR + VIDEO_M3_EXCEPTION_CTX_SIZE;
+
+var REMOTE_DEBUG_ADDR      = DDR3_ADDR_REG1_END - REMOTE_DEBUG_SIZE;
+var NOTIFY_SHARED_ADDR     = REMOTE_DEBUG_ADDR - NOTIFY_SHARED_SIZE;
+var HDVPSS_DESC_ADDR       = NOTIFY_SHARED_ADDR - HDVPSS_DESC_SIZE;
+var HDVPSS_SHARED_ADDR     = HDVPSS_DESC_ADDR  - HDVPSS_SHARED_SIZE;
+
+if ((VPSS_M3_EXCEPTION_CTX_ADDR + VPSS_M3_EXCEPTION_CTX_SIZE) > HDVPSS_SHARED_ADDR)
+{
+  throw xdc.$$XDCException("MEMORY_MAP OVERFLOW ERROR ",
+                           "\nRegion End: " + "0x" + java.lang.Long.toHexString(SR0_ADDR + SR0_SIZE) + 
+                           "\nActual End: " + "0x" + java.lang.Long.toHexString(HDVPSS_DESC_ADDR ));
+}
+
+
+if ((REMOTE_DEBUG_ADDR + REMOTE_DEBUG_SIZE) > DDR3_ADDR_REG1_END)
+{
+  throw xdc.$$XDCException("MEMORY_MAP OVERFLOW ERROR ",
+                           "\nRegion End: " + "0x" + java.lang.Long.toHexString(DDR3_ADDR_REG1_END) + 
+                           "\nActual End: " + "0x" + java.lang.Long.toHexString(REMOTE_DEBUG_ADDR + REMOTE_DEBUG_SIZE ));
+}
+
+var TOTAL_DDR_USED_SIZE_IN_MB  = ((((REMOTE_DEBUG_ADDR + REMOTE_DEBUG_SIZE) - DDR3_ADDR_REG1_START)) + ((DSS_M3_BSS_ADDR + DSS_M3_BSS_SIZE) - DDR3_ADDR_REG0_START))/MB;
+
+print(" ### ");
+print(" ### Total DDR usage in MB = " + TOTAL_DDR_USED_SIZE_IN_MB + " MB ###");
+print(" ### ");
+
+Build.platformTable["ti.platforms.evmTI814X:core1"] =
+{
+    externalMemoryMap:
+    [
+        ["DDR3_RAM", {
+            comment: "DDR3_RAM",
+            name: "DDR3_RAM",
+            base: DDR3_ADDR,
+            len:  DDR3_SIZE
+        }],
+        ["OCMC0_RAM", {
+            comment: "OCMC0_RAM",
+            name: "OCMC0_RAM",
+            base: OCMC0_ADDR,
+            len:  OCMC_SIZE
+        }],
+        ["OCMC1_RAM", {
+            comment: "OCMC1_RAM",
+            name: "OCMC1_RAM",
+            base: OCMC1_ADDR,
+            len:  OCMC_SIZE
+        }],
+        ["M3_L2_RAM", {
+            comment: "M3_L2_RAM",
+            name: "M3_L2_RAM",
+            base: M3_L2_RAM,
+            len:  M3_L2_RAM_SIZE
+        }],
+        ["OCMC0_RAM_MAPPED", {
+            comment: "OCMC0_RAM",
+            name: "OCMC0_RAM_MAPPED",
+            base: OCMC0_RUN_ADDR,
+            len:  OCMC_SIZE
+        }],         
+        ["CACHE_WB_DDR_LOGICAL_ADDRESS", {
+            comment: "CACHE_WB_DDR_LOGICAL_ADDRESS",
+            name: "CACHE_WB_DDR_LOGICAL_ADDRESS",
+            base: 0x20000000,
+            len:  0x20000000,
+        }],       
+    ],
+    customMemoryMap:
+    [
+        ["LINUX_MEM", {
+            comment : "LINUX_MEM",
+            name    : "LINUX_MEM",
+            base    : LINUX_ADDR,
+            len     : LINUX_SIZE
+        }],
+        ["SR1", {
+            comment : "SR1",
+            name    : "SR1",
+            base    : SR1_ADDR,
+            len     : SR1_SIZE
+        }],
+        ["VIDEO_M3_CODE_MEM", {
+            comment : "VIDEO_M3_CODE_MEM",
+            name    : "VIDEO_M3_CODE_MEM",
+            base    : VIDEO_M3_CODE_ADDR,
+            len     : VIDEO_M3_CODE_SIZE
+        }],
+        ["VIDEO_M3_DATA_MEM", {
+            comment : "VIDEO_M3_DATA_MEM",
+            name    : "VIDEO_M3_DATA_MEM",
+            base    : VIDEO_M3_DATA_ADDR,
+            len     : VIDEO_M3_DATA_SIZE
+        }],
+        ["VIDEO_M3_BSS_ADDR", {
+            comment : "VIDEO_M3_BSS_ADDR",
+            name    : "VIDEO_M3_BSS_ADDR",
+            base    : VIDEO_M3_BSS_ADDR,
+            len     : VIDEO_M3_BSS_SIZE
+        }],
+        ["VIDEO_M3_BSS_ADDR_RUN", {
+            comment : "VIDEO_M3_BSS_ADDR_RUN",
+            name    : "VIDEO_M3_BSS_ADDR_RUN",
+            base    : VIDEO_M3_BSS_ADDR_RUN,
+            len     : VIDEO_M3_BSS_SIZE
+        }],
+        ["DSS_M3_CODE_MEM", {
+            comment : "DSS_M3_CODE_MEM",
+            name    : "DSS_M3_CODE_MEM",
+            base    : DSS_M3_CODE_ADDR,
+            len     : DSS_M3_CODE_SIZE
+        }],
+        ["DDR3_M3", {
+            comment : "DDR3_M3",
+            name    : "DDR3_M3",
+            base    : DSS_M3_DATA_ADDR,
+            len     : DSS_M3_DATA_SIZE
+        }],
+        ["DSS_M3_BSS_ADDR", {
+            comment : "DSS_M3_BSS_ADDR",
+            name    : "DSS_M3_BSS_ADDR",
+            base    : DSS_M3_BSS_ADDR,
+            len     : DSS_M3_BSS_SIZE
+        }],        
+        ["DSS_M3_BSS_ADDR_RUN", {
+            comment : "DSS_M3_BSS_ADDR_RUN",
+            name    : "DSS_M3_BSS_ADDR_RUN",
+            base    : DSS_M3_BSS_RUN,
+            len     : DSS_M3_BSS_SIZE
+        }],        
+          ["TILER_MEM", {
+            comment : "TILER_MEM",
+            name    : "TILER_MEM",
+            base    : TILER_ADDR,
+            len     : TILER_SIZE
+        }],
+        ["SR2_FRAME_BUFFER_MEM", {
+            comment : "SR2_FRAME_BUFFER_MEM",
+            name    : "SR2_FRAME_BUFFER_MEM",
+            base    : SR2_FRAME_BUFFER_ADDR,
+            len     : SR2_FRAME_BUFFER_SIZE
+        }],
+        ["SR0", {
+            comment : "SR0",
+            name    : "SR0",
+            base    : SR0_ADDR,
+            len     : SR0_SIZE
+        }],
+        ["VIDEO_M3_EXCEPTION_CTX", {
+            comment : "VIDEO_M3_EXCEPTION_CTX",
+            name    : "VIDEO_M3_EXCEPTION_CTX",
+            base    : VIDEO_M3_EXCEPTION_CTX_ADDR,
+            len     : VIDEO_M3_EXCEPTION_CTX_SIZE
+        }],
+        ["VPSS_M3_EXCEPTION_CTX", {
+            comment : "VPSS_M3_EXCEPTION_CTX",
+            name    : "VPSS_M3_EXCEPTION_CTX",
+            base    : VPSS_M3_EXCEPTION_CTX_ADDR,
+            len     : VPSS_M3_EXCEPTION_CTX_SIZE
+        }],
+        ["HDVPSS_DESC_MEM", {
+            comment : "HDVPSS_DESC_MEM",
+            name    : "HDVPSS_DESC_MEM",
+            base    : HDVPSS_DESC_ADDR,
+            len     : HDVPSS_DESC_SIZE
+        }],
+        ["HDVPSS_SHARED_MEM", {
+            comment : "HDVPSS_SHARED_MEM",
+            name    : "HDVPSS_SHARED_MEM",
+            base    : HDVPSS_SHARED_ADDR,
+            len     : HDVPSS_SHARED_SIZE
+        }],
+        ["HOST_VPSS_NOTIFYMEM", {
+            comment : "HOST_VPSS_NOTIFYMEM",
+            name    : "HOST_VPSS_NOTIFYMEM",
+            base    : NOTIFY_SHARED_ADDR,
+            len     : NOTIFY_SHARED_SIZE
+        }],
+        ["REMOTE_DEBUG_MEM", {
+            comment : "REMOTE_DEBUG_MEM",
+            name    : "REMOTE_DEBUG_MEM",
+            base    : REMOTE_DEBUG_ADDR,
+            len     : REMOTE_DEBUG_SIZE
+        }],
+        ["L2_ROM", {
+            comment: "L2_ROM",
+            name: "L2_ROM",
+            base: 0x00000000,
+            len:  0x00004000
+        }],
+        ["OCMC0_VIDEO_M3_RAM", {
+            comment: "OCMC0_VIDEO_M3_RAM",
+            name: "OCMC0_VIDEO_M3_RAM",
+            base: OCMC0_VIDEO_M3_ADDR,
+            len:  OCMC0_VIDEO_M3_SIZE
+        }],
+        ["OCMC0_VPSS_M3_RAM", {
+            comment: "OCMC0_VPSS_M3_RAM",
+            name: "OCMC0_VPSS_M3_RAM",
+            base: OCMC0_VPSS_M3_ADDR,
+            len:  OCMC0_VPSS_M3_SIZE
+        }],        
+        ["OCMC1_RAM", {
+            comment: "OCMC1_RAM",
+            name: "OCMC1_RAM",
+            base: OCMC1_ADDR,
+            len:  OCMC_SIZE
+        }],
+        ["M3_L2_RAM", {
+            comment: "M3_L2_RAM",
+            name: "M3_L2_RAM",
+            base: M3_L2_RAM,
+            len:  M3_L2_RAM_SIZE
+        }],
+        ["M3_L2_RAM_MAPPED", {
+            comment: "M3_L2_RAM",
+            name: "M3_L2_RAM_MAPPED",
+            base: M3_L2_RAM_MAPPED,
+            len:  M3_L2_RAM_SIZE
+        }],
+        ["OCMC0_VIDEO_M3_RAM_MAPPED", {
+            comment: "OCMC0_VIDEO_M3_RAM_MAPPED",
+            name: "OCMC0_VIDEO_M3_RAM_MAPPED",
+            base: OCMC0_VIDEO_M3_RUN,
+            len:  OCMC0_VIDEO_M3_SIZE
+        }],
+        ["OCMC0_VPSS_M3_RAM_MAPPED", {
+            comment: "OCMC0_VPSS_M3_RAM_MAPPED",
+            name: "OCMC0_VPSS_M3_RAM_MAPPED",
+            base: OCMC0_VPSS_M3_RUN,
+            len:  OCMC0_VPSS_M3_SIZE
+        }], 
+    ]
+};
+
+Build.platformTable["ti.platforms.evmTI814X:core0"] =
+{
+    externalMemoryMap:
+    [
+        ["DDR3_RAM", {
+            comment: "DDR3_RAM",
+            name: "DDR3_RAM",
+            base: DDR3_ADDR,
+            len:  DDR3_SIZE
+        }],
+        ["OCMC0_RAM", {
+            comment: "OCMC0_RAM",
+            name: "OCMC0_RAM",
+            base: OCMC0_ADDR,
+            len:  OCMC_SIZE
+        }],
+        ["OCMC1_RAM", {
+            comment: "OCMC1_RAM",
+            name: "OCMC1_RAM",
+            base: OCMC1_ADDR,
+            len:  OCMC_SIZE
+        }],
+        ["M3_L2_RAM", {
+            comment: "M3_L2_RAM",
+            name: "M3_L2_RAM",
+            base: M3_L2_RAM,
+            len:  M3_L2_RAM_SIZE
+        }],   
+       ["OCMC0_RAM_MAPPED", {
+            comment: "OCMC0_RAM",
+            name: "OCMC0_RAM_MAPPED",
+            base: OCMC0_RUN_ADDR,
+            len:  OCMC_SIZE
+        }],
+        ["CACHE_WB_DDR_LOGICAL_ADDRESS", {
+            comment: "CACHE_WB_DDR_LOGICAL_ADDRESS",
+            name: "CACHE_WB_DDR_LOGICAL_ADDRESS",
+            base: 0x20000000,
+            len:  0x20000000,
+        }],          
+        
+    ],
+    customMemoryMap:
+    [
+        ["LINUX_MEM", {
+            comment : "LINUX_MEM",
+            name    : "LINUX_MEM",
+            base    : LINUX_ADDR,
+            len     : LINUX_SIZE
+        }],
+        ["SR1", {
+            comment : "SR1",
+            name    : "SR1",
+            base    : SR1_ADDR,
+            len     : SR1_SIZE
+        }],
+        ["VIDEO_M3_CODE_MEM", {
+            comment : "VIDEO_M3_CODE_MEM",
+            name    : "VIDEO_M3_CODE_MEM",
+            base    : VIDEO_M3_CODE_ADDR,
+            len     : VIDEO_M3_CODE_SIZE
+        }],
+        ["DDR3_M3", {
+            comment : "DDR3_M3",
+            name    : "DDR3_M3",
+            base    : VIDEO_M3_DATA_ADDR,
+            len     : VIDEO_M3_DATA_SIZE
+        }],
+        ["VIDEO_M3_BSS_ADDR", {
+            comment : "VIDEO_M3_BSS_ADDR",
+            name    : "VIDEO_M3_BSS_ADDR",
+            base    : VIDEO_M3_BSS_ADDR,
+            len     : VIDEO_M3_BSS_SIZE
+        }],          
+        ["VIDEO_M3_BSS_ADDR_RUN", {
+            comment : "VIDEO_M3_BSS_ADDR_RUN",
+            name    : "VIDEO_M3_BSS_ADDR_RUN",
+            base    : VIDEO_M3_BSS_ADDR_RUN,
+            len     : VIDEO_M3_BSS_SIZE
+        }],          
+        ["DSS_M3_CODE_MEM", {
+            comment : "DSS_M3_CODE_MEM",
+            name    : "DSS_M3_CODE_MEM",
+            base    : DSS_M3_CODE_ADDR,
+            len     : DSS_M3_CODE_SIZE
+        }],
+        ["DSS_M3_DATA_MEM", {
+            comment : "DSS_M3_DATA_MEM",
+            name    : "DSS_M3_DATA_MEM",
+            base    : DSS_M3_DATA_ADDR,
+            len     : DSS_M3_DATA_SIZE
+        }],
+        ["DSS_M3_BSS_ADDR", {
+            comment : "DSS_M3_BSS_ADDR",
+            name    : "DSS_M3_BSS_ADDR",
+            base    : DSS_M3_BSS_ADDR,
+            len     : DSS_M3_BSS_SIZE
+        }],        
+        ["DSS_M3_BSS_ADDR_RUN", {
+            comment : "DSS_M3_BSS_ADDR_RUN",
+            name    : "DSS_M3_BSS_ADDR_RUN",
+            base    : DSS_M3_BSS_RUN,
+            len     : DSS_M3_BSS_SIZE
+        }],        
+        ["TILER_MEM", {
+            comment : "TILER_MEM",
+            name    : "TILER_MEM",
+            base    : TILER_ADDR,
+            len     : TILER_SIZE
+        }],
+        ["SR2_FRAME_BUFFER_MEM", {
+            comment : "SR2_FRAME_BUFFER_MEM",
+            name    : "SR2_FRAME_BUFFER_MEM",
+            base    : SR2_FRAME_BUFFER_ADDR,
+            len     : SR2_FRAME_BUFFER_SIZE
+        }],
+        ["SR0", {
+            comment : "SR0",
+            name    : "SR0",
+            base    : SR0_ADDR,
+            len     : SR0_SIZE
+        }],
+        ["VIDEO_M3_EXCEPTION_CTX", {
+            comment : "VIDEO_M3_EXCEPTION_CTX",
+            name    : "VIDEO_M3_EXCEPTION_CTX",
+            base    : VIDEO_M3_EXCEPTION_CTX_ADDR,
+            len     : VIDEO_M3_EXCEPTION_CTX_SIZE
+        }],
+        ["VPSS_M3_EXCEPTION_CTX", {
+            comment : "VPSS_M3_EXCEPTION_CTX",
+            name    : "VPSS_M3_EXCEPTION_CTX",
+            base    : VPSS_M3_EXCEPTION_CTX_ADDR,
+            len     : VPSS_M3_EXCEPTION_CTX_SIZE
+        }],
+        ["HDVPSS_DESC_MEM", {
+            comment : "HDVPSS_DESC_MEM",
+            name    : "HDVPSS_DESC_MEM",
+            base    : HDVPSS_DESC_ADDR,
+            len     : HDVPSS_DESC_SIZE
+        }],
+        ["HDVPSS_SHARED_MEM", {
+            comment : "HDVPSS_SHARED_MEM",
+            name    : "HDVPSS_SHARED_MEM",
+            base    : HDVPSS_SHARED_ADDR,
+            len     : HDVPSS_SHARED_SIZE
+        }],
+        ["HOST_VPSS_NOTIFYMEM", {
+            comment : "HOST_VPSS_NOTIFYMEM",
+            name    : "HOST_VPSS_NOTIFYMEM",
+            base    : NOTIFY_SHARED_ADDR,
+            len     : NOTIFY_SHARED_SIZE
+        }],
+        ["REMOTE_DEBUG_MEM", {
+            comment : "REMOTE_DEBUG_MEM",
+            name    : "REMOTE_DEBUG_MEM",
+            base    : REMOTE_DEBUG_ADDR,
+            len     : REMOTE_DEBUG_SIZE
+        }],
+        ["L2_ROM", {
+            comment: "L2_ROM",
+            name: "L2_ROM",
+            base: 0x00000000,
+            len:  0x00004000
+        }],
+        ["OCMC0_VIDEO_M3_RAM", {
+            comment: "OCMC0_VIDEO_M3_RAM",
+            name: "OCMC0_VIDEO_M3_RAM",
+            base: OCMC0_VIDEO_M3_ADDR,
+            len:  OCMC0_VIDEO_M3_SIZE
+        }],
+        ["OCMC0_VPSS_M3_RAM", {
+            comment: "OCMC0_VPSS_M3_RAM",
+            name: "OCMC0_VPSS_M3_RAM",
+            base: OCMC0_VPSS_M3_ADDR,
+            len:  OCMC0_VPSS_M3_SIZE
+        }], 
+        ["OCMC1_RAM", {
+            comment: "OCMC1_RAM",
+            name: "OCMC1_RAM",
+            base: OCMC1_ADDR,
+            len:  OCMC_SIZE
+        }],
+        ["M3_L2_RAM", {
+            comment: "M3_L2_RAM",
+            name: "M3_L2_RAM",
+            base: M3_L2_RAM,
+            len:  M3_L2_RAM_SIZE
+        }],
+        ["M3_L2_RAM_MAPPED", {
+            comment: "M3_L2_RAM",
+            name: "M3_L2_RAM_MAPPED",
+            base: M3_L2_RAM_MAPPED,
+            len:  M3_L2_RAM_SIZE
+        }], 
+        ["OCMC0_VIDEO_M3_RAM_MAPPED", {
+            comment: "OCMC0_VIDEO_M3_RAM_MAPPED",
+            name: "OCMC0_VIDEO_M3_RAM_MAPPED",
+            base: OCMC0_VIDEO_M3_RUN,
+            len:  OCMC0_VIDEO_M3_SIZE
+        }],
+        ["OCMC0_VPSS_M3_RAM_MAPPED", {
+            comment: "OCMC0_VPSS_M3_RAM_MAPPED",
+            name: "OCMC0_VPSS_M3_RAM_MAPPED",
+            base: OCMC0_VPSS_M3_RUN,
+            len:  OCMC0_VPSS_M3_SIZE
+        }], 
+            
+    ]
+};
+
+
+
+var addrFileGenerated = false;
+if (addrFileGenerated == false)
+{
+    xdc.loadCapsule("genaddrinfo.xs").GenAddrFile();
+    addrFileGenerated = true;
+}
+
+
