@@ -284,7 +284,7 @@ Int32 Vsys_create()
         case VSYS_USECASE_MULTICHN_VCAP_VENC:
             MultiCh_createVcapVencVdis();
             break;
-        case VSYS_USECASE_MULTICHN_HD_VCAP_VENC:
+        case VSYS_USECASE_MULTICHN_HD_VCAP_VENC:// 3
             MultiChHd_createVcapVencVdis();
             break;
         case VSYS_USECASE_MULTICHN_HYBRID_DVR_16CH:

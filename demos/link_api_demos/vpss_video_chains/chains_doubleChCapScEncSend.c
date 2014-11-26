@@ -16,7 +16,26 @@
 #include <string.h>
 #include <signal.h>
 #include <stdlib.h>
-
+static UInt8 SCDChannelMonitor[16] = {0, 1, 2, 3};
+void Chains_ScdPrint(UInt32 scdId)
+{
+	    AlgLink_ScdAllChFrameStatus scdAllChFrameStatus;
+    		/**< SCD frame level status information for all CHs */
+            int status = System_linkControl(
+                                        scdId,
+                                        ALG_LINK_SCD_CMD_GET_ALL_CHANNEL_FRAME_STATUS,
+                                        &(scdAllChFrameStatus),
+                                        sizeof(scdAllChFrameStatus),
+                                        TRUE
+                                        );
+	int i;
+	for(i=0;i<scdAllChFrameStatus.numCh;i++)
+	{
+	 	 printf("SCD status numCh:%d, chId %d , frmResult = %d\r\n",i,scdAllChFrameStatus.chanFrameResult[i].chId,
+		 	scdAllChFrameStatus.chanFrameResult[i].frmResult);
+	}
+		
+}
 void Chains_OSDConfig(AlgLink_CreateParams *DSPLinkPrm)
 {
    Ptr osdWinSrAddr[ALG_LINK_OSD_MAX_CH][CHAINS_OSD_NUM_WINDOWS];
@@ -118,11 +137,11 @@ Void Chains_doubleChCapScEncSend(Chains_Ctrl *chainsCfg)
 
 //guo----for osd--------------
 
-   AlgLink_CreateParams        	    DSPLinkPrm;//guo changed to global
+    AlgLink_CreateParams        	    DSPLinkPrm;//guo changed to global
     IpcFramesOutLinkRTOS_CreateParams  ipcFramesOutVpssPrm;
     IpcFramesInLinkHLOS_CreateParams   ipcFramesInDspPrm;
 
-   UInt32 osdId;
+    UInt32 osdId;
     UInt32 ipcFramesOutVpssId, ipcFramesInDspId;
 	
     UInt8 osdFormat[ALG_LINK_OSD_MAX_CH];
@@ -132,6 +151,45 @@ Void Chains_doubleChCapScEncSend(Chains_Ctrl *chainsCfg)
 	//	    gChains_ctrl.channelConf[0].enableOsd=TRUE;
     memset(osdFormat,  SYSTEM_DF_YUV422I_YUYV, ALG_LINK_OSD_MAX_CH);
 //----------------------------------------------
+//guo2014/11/21--added for scd
+#if 1
+	//Scd CreateParams is contined in AlgLink_CreateParmas
+	NsfLink_CreateParams       		 nsfPrm2;//SCD is only support YUV420
+	SclrLink_CreateParams           sclrPrm;
+	AlgLink_CreateParams		scdPrm;
+	IpcFramesOutLinkRTOS_CreateParams  ipcFramesOutVpssPrm2;	//outVpss
+	IpcFramesInLinkRTOS_CreateParams  ipcFramesInDspPrm2;		//Into Dsp
+	IpcBitsOutLinkRTOS_CreateParams   ipcBitsOutDspPrm2;
+	IpcBitsInLinkHLOS_CreateParams  ipcBitsInHostPrm2;
+
+
+	UInt32 nsfId2;
+	UInt32 scdId;
+	UInt32 sclrId;
+	UInt32 ipcFramesOutVpssId2;
+	UInt32 ipcFramesInDspId2;
+	UInt32 ipcBitsOutDspId2;
+	UInt32 ipcBitsInHostId2;
+		
+	Bool enableScdAlgLink = 1;
+
+	nsfId2 = SYSTEM_LINK_ID_NSF_1;
+	scdId = SYSTEM_LINK_ID_ALG_1;
+	sclrId = SYSTEM_LINK_ID_SCLR_INST_0;
+	ipcFramesOutVpssId2 =  SYSTEM_VPSS_LINK_ID_IPC_FRAMES_OUT_1; 
+	ipcFramesInDspId2 = SYSTEM_DSP_LINK_ID_IPC_FRAMES_IN_1;
+	ipcBitsOutDspId2 = SYSTEM_DSP_LINK_ID_IPC_BITS_OUT_0;
+	ipcBitsInHostId2 = SYSTEM_HOST_LINK_ID_IPC_BITS_IN_1;
+	CHAINS_INIT_STRUCT(NsfLink_CreateParams, nsfPrm2);
+	CHAINS_INIT_STRUCT(SclrLink_CreateParams,sclrPrm);
+	CHAINS_INIT_STRUCT(IpcFramesOutLinkRTOS_CreateParams,ipcFramesOutVpssPrm2);
+   	CHAINS_INIT_STRUCT(IpcFramesInLinkHLOS_CreateParams,ipcFramesInDspPrm2);
+	CHAINS_INIT_STRUCT(IpcBitsOutLinkRTOS_CreateParams,ipcBitsOutDspPrm2);
+	CHAINS_INIT_STRUCT(IpcBitsInLinkHLOS_CreateParams,ipcBitsInHostPrm2);
+	CHAINS_INIT_STRUCT(AlgLink_CreateParams,scdPrm);
+#endif   
+//----------------end scd-----------------------------
+
     UInt32 enableDisplay = FALSE;
     UInt32 i;
     char   ch;
@@ -177,6 +235,11 @@ Void Chains_doubleChCapScEncSend(Chains_Ctrl *chainsCfg)
     ipcBitsOutVideoId   = SYSTEM_VIDEO_LINK_ID_IPC_BITS_OUT_0;
     ipcBitsInHostId     = SYSTEM_HOST_LINK_ID_IPC_BITS_IN_0;
 
+    System_linkControl(       
+		SYSTEM_LINK_ID_M3VPSS,
+		SYSTEM_M3VPSS_CMD_RESET_VIDEO_DEVICES, 
+		NULL,        0,        TRUE        );
+
     System_linkControl(
         SYSTEM_LINK_ID_M3VIDEO,
         SYSTEM_COMMON_CMD_SET_CH2IVAHD_MAP_TBL,
@@ -216,7 +279,7 @@ Void Chains_doubleChCapScEncSend(Chains_Ctrl *chainsCfg)
 
         pCaptureOutPrm                      = &pCaptureInstPrm->outParams[1];
         pCaptureOutPrm->dataFormat          = SYSTEM_DF_YUV422I_YUYV;
-        pCaptureOutPrm->scEnable            = TRUE;
+        pCaptureOutPrm->scEnable            = FALSE;
         pCaptureOutPrm->scOutWidth          = gChains_ctrl.channelConf[2+i].width;
         pCaptureOutPrm->scOutHeight         = gChains_ctrl.channelConf[2+i].height;
         pCaptureOutPrm->outQueId            = 1;
@@ -266,8 +329,8 @@ Void Chains_doubleChCapScEncSend(Chains_Ctrl *chainsCfg)
         DSPLinkPrm.inQueParams.prevLinkQueId = 0;
         DSPLinkPrm.enableOSDAlg=TRUE;
 	 DSPLinkPrm.enableSCDAlg=FALSE;
-//#define LOGO  //this is reserved for original logo only osd ,for case you will test the logo.
-#ifdef LOGO
+//#define LOGOONLY  //this is reserved for original logo only osd ,for case you will test the logo.
+#ifdef LOGOONLY
 
         Chains_OSDConfig(DSPLinkPrm);//origin logo osd is OK
  #else
@@ -299,6 +362,145 @@ Void Chains_doubleChCapScEncSend(Chains_Ctrl *chainsCfg)
 
     dupPrm.inQueParams.prevLinkQueId        = 0;
     dupPrm.numOutQue                        = 2;
+//guo scd--------
+    if(enableScdAlgLink)
+    {
+    	dupPrm.numOutQue	=	3;	//dup's third OutQue
+	dupPrm.outQueParams[2].nextLink = sclrId;
+	
+
+    sclrPrm.inQueParams.prevLinkId             = dupId;
+    sclrPrm.inQueParams.prevLinkQueId          = 2;
+    sclrPrm.outQueParams.nextLink              = nsfId2;
+
+    sclrPrm.tilerEnable                        = FALSE;
+    sclrPrm.enableLineSkipSc                   = TRUE;//FALSE;
+    sclrPrm.inputFrameRate                     = 60;
+    sclrPrm.outputFrameRate                    = 60;
+    sclrPrm.scaleMode                          = DEI_SCALE_MODE_ABSOLUTE;
+	sclrPrm.outScaleFactor.absoluteResolution.outWidth = 352;
+	sclrPrm.outScaleFactor.absoluteResolution.outHeight = 240;
+
+
+    nsfPrm2.inQueParams.prevLinkId    = sclrId;
+    nsfPrm2.inQueParams.prevLinkQueId = 0;
+    nsfPrm2.bypassNsf                 = TRUE;
+    nsfPrm2.tilerEnable               = FALSE;
+    nsfPrm2.numOutQue                 = 1;
+    nsfPrm2.outQueParams[0].nextLink  = ipcFramesOutVpssId2;
+    nsfPrm2.inputFrameRate            = 60;
+    nsfPrm2.outputFrameRate           = 60;
+    nsfPrm2.numBufsPerCh              = 8;
+
+      ipcFramesOutVpssPrm2.baseCreateParams.inQueParams.prevLinkId = nsfId2;
+        ipcFramesOutVpssPrm2.baseCreateParams.inQueParams.prevLinkQueId = 0;
+        ipcFramesOutVpssPrm2.baseCreateParams.notifyPrevLink = TRUE;
+
+        ipcFramesOutVpssPrm2.baseCreateParams.numOutQue = 1;
+        ipcFramesOutVpssPrm2.baseCreateParams.outQueParams[0].nextLink = ipcFramesInDspId2;
+        ipcFramesOutVpssPrm2.baseCreateParams.notifyNextLink = TRUE;
+	ipcFramesOutVpssPrm2.baseCreateParams.inputFrameRate = 60;
+	ipcFramesOutVpssPrm2.baseCreateParams.outputFrameRate = 2;
+
+
+        ipcFramesInDspPrm2.baseCreateParams.inQueParams.prevLinkId = ipcFramesOutVpssId2;
+        ipcFramesInDspPrm2.baseCreateParams.inQueParams.prevLinkQueId = 0;
+        ipcFramesInDspPrm2.baseCreateParams.numOutQue   = 1;
+        ipcFramesInDspPrm2.baseCreateParams.outQueParams[0].nextLink = scdId;
+        ipcFramesInDspPrm2.baseCreateParams.notifyPrevLink = TRUE;
+        ipcFramesInDspPrm2.baseCreateParams.notifyNextLink = TRUE;
+        ipcFramesInDspPrm2.baseCreateParams.noNotifyMode   = FALSE;
+
+
+	Int32    numBlksInFrame;
+       Int32    numHorzBlks, numVertBlks, chIdx;
+       Uint32  x, y, i;
+	scdPrm.inQueParams.prevLinkId = ipcFramesInDspId2;
+	scdPrm.inQueParams.prevLinkQueId =0;
+        scdPrm.enableSCDAlg              = TRUE;
+	scdPrm.enableOSDAlg	= FALSE;
+        scdPrm.outQueParams[ALG_LINK_SCD_OUT_QUE].nextLink     = ipcBitsOutDspId2;
+        scdPrm.scdCreateParams.numBufPerCh            = 3;
+
+        scdPrm.scdCreateParams.maxWidth               = 352;
+           scdPrm.scdCreateParams.maxHeight           = 240;//288
+
+        scdPrm.scdCreateParams.maxStride              = 352;
+        scdPrm.scdCreateParams.numValidChForSCD       = 4;	//16
+
+        scdPrm.scdCreateParams.numSecs2WaitB4Init     = 3;
+        scdPrm.scdCreateParams.numSecs2WaitB4FrmAlert = 1;
+        scdPrm.scdCreateParams.inputFrameRate         = 2;
+        scdPrm.scdCreateParams.outputFrameRate        = 2;
+
+        scdPrm.scdCreateParams.numSecs2WaitAfterFrmAlert    = 2;
+        scdPrm.scdCreateParams.numSecs2Wait2MarkStableFrame = 5;
+
+        scdPrm.scdCreateParams.enableMotionNotify        = FALSE;
+        scdPrm.scdCreateParams.enableTamperNotify        = FALSE;
+
+        /* Should be applied on CIF channels whose ch numbers are 4~7 */
+        //scdPrm.scdCreateParams.startChNoForSCD = 16;
+        // Configure array to monitor scene changes in all frame blocks, i.e., motion detection.
+        // Each block is fixed to be 32x10 in size,
+        numHorzBlks     = scdPrm.scdCreateParams.maxWidth / 32;
+        if(scdPrm.scdCreateParams.maxHeight == 240)
+           numVertBlks    = scdPrm.scdCreateParams.maxHeight / 10;
+        else   /* For 288 Block height becomes 12 */
+           numVertBlks    = scdPrm.scdCreateParams.maxHeight / 12;
+
+        numBlksInFrame  = numHorzBlks * numVertBlks;
+
+        for(chIdx = 0; chIdx < scdPrm.scdCreateParams.numValidChForSCD; chIdx++)
+        {
+           AlgLink_ScdChParams * chPrm = &scdPrm.scdCreateParams.chDefaultParams[chIdx];
+
+           chPrm->blkNumBlksInFrame  = numBlksInFrame;
+           chPrm->chId               = SCDChannelMonitor[chIdx];
+           chPrm->mode               = ALG_LINK_SCD_DETECTMODE_MONITOR_BLOCKS_AND_FRAME;
+           chPrm->frmIgnoreLightsON  = FALSE;
+           chPrm->frmIgnoreLightsOFF = FALSE;
+           chPrm->frmSensitivity     = ALG_LINK_SCD_SENSITIVITY_HIGH;//ALG_LINK_SCD_SENSITIVITY_VERYHIGH;
+           chPrm->frmEdgeThreshold   = 100;
+
+           i = 0;
+           for(y = 0; y < numVertBlks; y++)
+           {
+             for(x = 0; x < numHorzBlks; x++)
+             {
+               chPrm->blkConfig[i].sensitivity = ALG_LINK_SCD_SENSITIVITY_LOW;
+               chPrm->blkConfig[i].monitored     = 0;
+               i++;
+             }
+           }
+        }
+
+        ipcBitsOutDspPrm2.baseCreateParams.inQueParams.prevLinkId    = scdId;
+        ipcBitsOutDspPrm2.baseCreateParams.inQueParams.prevLinkQueId = 0;
+        ipcBitsOutDspPrm2.baseCreateParams.numOutQue                 = 1;
+	 ipcBitsOutDspPrm2.baseCreateParams.noNotifyMode	= FALSE;
+	  ipcBitsOutDspPrm2.baseCreateParams.notifyNextLink              = TRUE;
+        ipcBitsOutDspPrm2.baseCreateParams.outQueParams[0].nextLink  =  ipcBitsInHostId2;
+        
+       // MultiCh_ipcBitsInitCreateParams_BitsOutRTOS(&ipcBitsOutDspPrm2,TRUE);
+        ipcBitsOutDspPrm2.baseCreateParams.notifyNextLink              = TRUE;
+        ipcBitsOutDspPrm2.baseCreateParams.noNotifyMode                = FALSE;
+
+        ipcBitsInHostPrm2.baseCreateParams.inQueParams.prevLinkId = ipcBitsOutDspId2;
+        ipcBitsInHostPrm2.baseCreateParams.inQueParams.prevLinkQueId = 0;
+        ipcBitsInHostPrm2.baseCreateParams.numOutQue                 = 1;
+        ipcBitsInHostPrm2.baseCreateParams.outQueParams[0].nextLink   = SYSTEM_LINK_ID_INVALID;
+        //MultiCh_ipcBitsInitCreateParams_BitsInHLOSVcap(&ipcBitsInHostPrm2);
+        ipcBitsInHostPrm2.baseCreateParams.notifyPrevLink         = TRUE;
+        ipcBitsInHostPrm2.baseCreateParams.noNotifyMode              = FALSE;
+		
+
+    }
+    else
+    {
+        scdPrm.outQueParams[ALG_LINK_SCD_OUT_QUE].nextLink     = SYSTEM_LINK_ID_INVALID;//nullId;
+    }
+	  
     dupPrm.outQueParams[0].nextLink = nsfId;
     dupPrm.outQueParams[1].nextLink = dup2Id;//to display
     dupPrm.notifyNextLink                    = TRUE;
@@ -385,20 +587,7 @@ Void Chains_doubleChCapScEncSend(Chains_Ctrl *chainsCfg)
 
     Chains_displayCtrlInit(chainsCfg->displayRes);
     System_linkCreate(mergeId, &mergePrm, sizeof(mergePrm));
-    if(enableOsdAlgLink)
-    {
-        System_linkCreate(ipcFramesOutVpssId     , &ipcFramesOutVpssPrm    , sizeof(ipcFramesOutVpssPrm));
-        System_linkCreate(ipcFramesInDspId     , &ipcFramesInDspPrm    , sizeof(ipcFramesInDspPrm));
-        System_linkCreate(osdId,&DSPLinkPrm,sizeof(DSPLinkPrm));
-    }
-
-    System_linkCreate(dupId, &dupPrm, sizeof(dupPrm));
-    System_linkCreate(nsfId , &nsfPrm, sizeof(nsfPrm));
-    System_linkCreate(ipcOutVpssId, &ipcOutVpssPrm, sizeof(ipcOutVpssPrm));
-    System_linkCreate(ipcInVideoId, &ipcInVideoPrm, sizeof(ipcInVideoPrm));
-    System_linkCreate(encId, &encPrm, sizeof(encPrm));
-    System_linkCreate(ipcBitsOutVideoId, &ipcBitsOutVideoPrm, sizeof(ipcBitsOutVideoPrm));
-    System_linkCreate(ipcBitsInHostId, &ipcBitsInHostPrm, sizeof(ipcBitsInHostPrm));
+   
 
     dup2Prm.inQueParams.prevLinkId           = dupId;
     dup2Prm.inQueParams.prevLinkQueId        = 1;
@@ -431,6 +620,35 @@ Void Chains_doubleChCapScEncSend(Chains_Ctrl *chainsCfg)
         displayPrm[i].forceFieldSeparatedInputMode  = FALSE;
     }
 
+ 	if(enableOsdAlgLink)
+    {
+        System_linkCreate(ipcFramesOutVpssId     , &ipcFramesOutVpssPrm    , sizeof(ipcFramesOutVpssPrm));
+        System_linkCreate(ipcFramesInDspId     , &ipcFramesInDspPrm    , sizeof(ipcFramesInDspPrm));
+        System_linkCreate(osdId,&DSPLinkPrm,sizeof(DSPLinkPrm));
+    }
+
+
+    System_linkCreate(dupId, &dupPrm, sizeof(dupPrm));
+    System_linkCreate(nsfId , &nsfPrm, sizeof(nsfPrm));
+    System_linkCreate(ipcOutVpssId, &ipcOutVpssPrm, sizeof(ipcOutVpssPrm));
+    System_linkCreate(ipcInVideoId, &ipcInVideoPrm, sizeof(ipcInVideoPrm));
+    System_linkCreate(encId, &encPrm, sizeof(encPrm));
+    System_linkCreate(ipcBitsOutVideoId, &ipcBitsOutVideoPrm, sizeof(ipcBitsOutVideoPrm));
+    System_linkCreate(ipcBitsInHostId, &ipcBitsInHostPrm, sizeof(ipcBitsInHostPrm));
+
+		//guo
+	if(enableScdAlgLink)
+	{
+		System_linkCreate(sclrId, &sclrPrm    , sizeof(sclrPrm ));
+		System_linkCreate(nsfId2,&nsfPrm2,sizeof(nsfPrm2));
+		System_linkCreate(ipcFramesOutVpssId2     , &ipcFramesOutVpssPrm2    , sizeof(ipcFramesOutVpssPrm2));
+		        System_linkCreate(ipcFramesInDspId2     , &ipcFramesInDspPrm2    , sizeof(ipcFramesInDspPrm2));
+			System_linkCreate(scdId,&scdPrm,sizeof(scdPrm));
+		 System_linkCreate(ipcBitsOutDspId2, &ipcBitsOutDspPrm2, sizeof(ipcBitsOutDspPrm2));
+  //  System_linkCreate(ipcBitsInHostId2, &ipcBitsInHostPrm2, sizeof(ipcBitsInHostPrm2));
+	
+	}
+
     System_linkCreate(dup2Id, &dup2Prm, sizeof(dup2Prm));
     for (i=0; i<2; i++) {
        System_linkCreate(swMsId[i], &swMsPrm[i], sizeof(swMsPrm[i]));
@@ -439,7 +657,7 @@ Void Chains_doubleChCapScEncSend(Chains_Ctrl *chainsCfg)
 
     Chains_memPrintHeapStatus();
 
-    {
+    
         System_linkStart(encId);
         for (i=0; i<2; i++) {
             System_linkStart(displayId[i]);
@@ -447,7 +665,20 @@ Void Chains_doubleChCapScEncSend(Chains_Ctrl *chainsCfg)
         }
         System_linkStart(dup2Id);
 	 System_linkStart(nsfId);
+
+
+
         System_linkStart(dupId);
+
+//guo scd
+//	System_linkStart(ipcBitsInHostId2);
+	System_linkStart(ipcBitsOutDspId2);
+	System_linkStart(scdId);
+	System_linkStart(ipcFramesInDspId2);
+	System_linkStart(ipcFramesOutVpssId2);
+	System_linkStart(nsfId2);
+	System_linkStart(sclrId);
+//----------------------
 //guo-----------------------------
 	if(enableOsdAlgLink)
         {
@@ -516,8 +747,9 @@ Void Chains_doubleChCapScEncSend(Chains_Ctrl *chainsCfg)
             		 Chains_swMsSwitchLayout(&swMsId, &swMsPrm, switchLayout, switchCh, 1);
             		 continue;
             	 }
+		
             }
-
+		Chains_ScdPrint(scdId);
         }
 
         System_linkStop(captureId);
@@ -542,7 +774,7 @@ Void Chains_doubleChCapScEncSend(Chains_Ctrl *chainsCfg)
         Chains_ipcBitsStop();
         System_linkStop(ipcBitsOutVideoId);
         System_linkStop(ipcBitsInHostId);
-    }
+    
 
     System_linkDelete(captureId);
     System_linkDelete(mergeId);

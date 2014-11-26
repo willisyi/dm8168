@@ -79,7 +79,6 @@ Int32 AlgLink_algCreate(AlgLink_Obj * pObj, AlgLink_CreateParams * pPrm)
     Int32 queueId;
     
     Vps_printf(" %d: ALG : Create in progress !!!\n", Utils_getCurTimeInMsec());
-    Vps_printf("*********************test&&&&&&&&&&&&&&&\r\n");
 
     UTILS_MEMLOG_USED_START();
     memcpy(&pObj->createArgs, pPrm, sizeof(*pPrm));

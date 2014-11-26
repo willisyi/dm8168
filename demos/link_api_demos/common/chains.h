@@ -29,6 +29,7 @@
 #include <link_api/systemLink_m3video.h>
 #include <link_api/encLink.h>
 #include <link_api/decLink.h>
+#include <link_api/sclrLink.h>//guo
 #include <assert.h>
 #include <mcfw/interfaces/link_api/algLink.h>
 #include <demos/link_api_demos/common/chains_swMs.h>
@@ -171,7 +172,7 @@ Void Chains_singleChDucatiSystem(Chains_Ctrl *chainsCfg);
 Void Chains_singleChCapNsfEncDecSwMsDis(Chains_Ctrl *chainsCfg);
 Void Chains_singleChCapEncSend(Chains_Ctrl *chainsCfg);
 Void Chains_singleChRecvDecDis(Chains_Ctrl *chainsCfg);
-
+Void Chains_singleChCaptureOSD(Chains_Ctrl * chainsCfg);
 Void Chains_doubleChCapDis(Chains_Ctrl *chainsCfg);
 Void Chains_doubleChCapDisTest(Chains_Ctrl *chainsCfg);
 Void Chains_doubleChCapSwMsDis(Chains_Ctrl *chainsCfg);
