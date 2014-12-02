@@ -134,7 +134,8 @@ void font16(char *incode,char *dest)
 */
 Void font2Yuv(unsigned char *dest,unsigned char *src,int len)
 {
-    BYTE a[2]={0x00,0x00};
+    //BYTE a[2]={0x00,0x7D};
+BYTE a[2]={0x00,0x00};
     BYTE b[2]={0xFF,0x7D};
     int i;
     for(i=0;i<len ;i++)

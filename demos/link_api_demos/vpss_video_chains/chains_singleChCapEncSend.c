@@ -57,11 +57,10 @@ Void Chains_singleChCapEncSend(Chains_Ctrl *chainsCfg)
     //------------------------------Sue------------------------------------
     IpcFramesOutLinkRTOS_CreateParams  ipcFramesOutVpssPrm;
     IpcFramesInLinkHLOS_CreateParams   ipcFramesInDspPrm;
-    AlgLink_CreateParams    DSPLinkPrm;
-    UInt32 osdId;
-    UInt8 osdFormat[ALG_LINK_OSD_MAX_CH];
-    memset(osdFormat,  SYSTEM_DF_YUV422I_YUYV, ALG_LINK_OSD_MAX_CH);
-		
+   AlgLink_CreateParams    DSPLinkPrm;
+   UInt32 osdId;
+	    UInt8 osdFormat[ALG_LINK_OSD_MAX_CH];
+		memset(osdFormat,  SYSTEM_DF_YUV422I_YUYV, ALG_LINK_OSD_MAX_CH);
     //---------------------------------------------------------------------	
     UInt32 captureId;
     UInt32 vipInstId;
@@ -389,16 +388,17 @@ Void Chains_singleChCapEncSend(Chains_Ctrl *chainsCfg)
 		 Chains_ipcBitsLocSt();
 	     if(ch=='e')
 		 Chains_ipcBitsLocStStop();
-	     if(ch=='o')
+	  /*   if(ch=='o')
 	     	{
 	     		DSPLinkPrm.osdChCreateParams[0].chDefaultParams.winPrm[3].startX=200;
 			DSPLinkPrm.osdChCreateParams[0].chDefaultParams.winPrm[3].startY=200;
 			//DSPLinkPrm.osdChCreateParams[0].chDefaultParams.winPrm[0].enableWin=0;
 			gChains_ctrl.channelConf[0].OSDfont=32;
-		   // strcpy(NameExample,"南京邮电大学NUPT");
-			//OSDPrmCofig();
+			//OSD_free();
+		    strcpy(NameExample,"南京邮电大学NUPT");
+			OSDPrmCofig();
 		//	Osdsocket();
-	     	}
+	     	}*/
 	    
 	     	
 
@@ -448,6 +448,7 @@ AudioOn=AUDIO_OFF;
         System_linkDelete(ipcFramesOutVpssId);
         System_linkDelete(ipcFramesInDspId);
         System_linkDelete(osdId);
+	 //OSD_free();
 	Demo_osdDeinit();
            
     }

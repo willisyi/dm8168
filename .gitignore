@@ -11,3 +11,5 @@
 *.SearchResults
 *.WK3
 *.o
+*.h~
+*.c~

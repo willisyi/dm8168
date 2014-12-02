@@ -696,7 +696,7 @@ Void Chains_doubleChCapScEncSend(Chains_Ctrl *chainsCfg)
             }
 	   if(ch=='P')
 	   {
-	   	Vsys_printDetailedStatistics();//This is not working
+	   	Vsys_printDetailedStatistics();
 		continue;
 	   }
 

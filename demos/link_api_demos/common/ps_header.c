@@ -520,9 +520,18 @@ void ps_package(FILE* fd,NALU_t nalu,char* pbuf,int length,unsigned int *Frame_I
     memcpy(buf,pbuf,len);
     
     //SPS、PPS、I帧默认为一组，找到此包
-	if (((buf[4]&0x0F) == 0x07)&&(buf[0] == 0x00) && (buf[1] == 0x00) && (buf[2] == 0x00) && (buf[3] == 0x01))
+	if ((buf[0] == 0x00) && (buf[1] == 0x00) && (buf[2] == 0x00) && (buf[3] == 0x01) && ((buf[4]&0x0F) == 0x07))
 	{
-
+	     /*
+	      nalu.type = SPS;
+		nalu.Fps = 60;
+		memcpy(nalu.buf+7,buf,len);
+		nalu.len=len+7;
+		Ps_Packet_Len = make_ps_packet(Ps_Packet_Buf,&nalu,*Frame_Index,stop);//根据帧类别区别封装
+		write(fd,Ps_Packet_Buf,Ps_Packet_Len);
+		*Frame_Index=*Frame_Index+1;
+		//printf("SPS paksize=%d\n",len);
+	     */
 	      if(len<60000)
 	      {
 		nalu.type = SPS;
@@ -537,6 +546,7 @@ void ps_package(FILE* fd,NALU_t nalu,char* pbuf,int length,unsigned int *Frame_I
 		else
 		{
 		   	k=0;
+			//printf("\nSPS paksize>60000,totalsize=%d\n",len);
 			while (len>60000)
 			{
 				//printf("k=%d\n",k);
@@ -564,14 +574,24 @@ void ps_package(FILE* fd,NALU_t nalu,char* pbuf,int length,unsigned int *Frame_I
 			nalu.Fps = 60;
 			memcpy(nalu.buf,buf+k*60000,len);
 			nalu.len=len;
+			//printf("SPS paksize=%d\n",nalu.len);
 			Ps_Packet_Len = make_ps_packet(Ps_Packet_Buf,&nalu,*Frame_Index,stop);
 			fwrite(Ps_Packet_Buf,Ps_Packet_Len,1,fd);
 			*Frame_Index=*Frame_Index+1;
 		}
 	}
 	//找到P帧			
-	else if ((buf[3] == 0x01) && ((buf[4]&0x0F) == 0x01)&&(buf[0] == 0x00) && (buf[1] == 0x00) && (buf[2] == 0x00))
+	else if ((buf[0] == 0x00) && (buf[1] == 0x00) && (buf[2] == 0x00) && (buf[3] == 0x01) && ((buf[4]&0x0F) == 0x01))
 	{
+	     /*
+             nalu.type = P_B_frame;
+		nalu.Fps = 60;
+		memcpy(nalu.buf+7,buf,len);
+		nalu.len=len+7;
+		Ps_Packet_Len = make_ps_packet(Ps_Packet_Buf,&nalu,*Frame_Index,stop);//根据帧类别区别封装
+		write(fd,Ps_Packet_Buf,Ps_Packet_Len);
+		*Frame_Index=*Frame_Index+1;
+		//printf("P_B_frame paksize=%d\n",len);*/
 		if(len<60000)
 	      {
 	       nalu.type = P_B_frame;

@@ -911,13 +911,13 @@ int main ( int argc, char **argv )
     System_init();
 	memset(&gChains_ctrl,0,sizeof(gChains_ctrl));
     Chains_setDefaultCfg();
- //#define ONE
+// #define ONE
 #ifdef ONE
    ParseArgs( argc, argv);
 #else
     Chains_doubleChParseArgs(argc,argv);
 #endif	
-	gChains_ctrl.channelConf[0].intraFrameInterval=2*gChains_ctrl.channelConf[0].encFrameRate;
+	gChains_ctrl.channelConf[0].intraFrameInterval=2*(gChains_ctrl.channelConf[0].encFrameRate);
 	
      if(gChains_ctrl.channelConf[0].audioEnable)
     {
@@ -928,6 +928,8 @@ int main ( int argc, char **argv )
 		if(gChains_ctrl.channelConf[0].enableServer== TRUE)//updata by Sue 
 #ifdef ONE
 	    	Chains_run(Chains_singleChCapEncSend);
+
+
 #else
 	Chains_run(Chains_doubleChCapScEncSend);
 #endif

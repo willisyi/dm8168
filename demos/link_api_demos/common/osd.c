@@ -148,12 +148,11 @@ Int32 Demo_osdInit(UInt32 numCh, UInt8 *osdFormat)
         chWinPrm->numWindows = DEMO_OSD_NUM_WINDOWS;
 
         //chWinPrm->colorKey[0] = 0xfa; /* Y */
-        //chWinPrm->colorKey[1] = 0x7d; /* U */
-        //chWinPrm->colorKey[2] = 0x7e; /* V */
-	//no shadow
-	 chWinPrm->colorKey[0] = 0x0; /* Y */
-        chWinPrm->colorKey[1] = 0x0; /* U */
-        chWinPrm->colorKey[2] = 0x0; /* V */
+       // chWinPrm->colorKey[1] = 0x7d; /* U */
+      //  chWinPrm->colorKey[2] = 0x7e; /* V */
+chWinPrm->colorKey[0] = 0x0;
+chWinPrm->colorKey[1] = 0x0;
+chWinPrm->colorKey[2] = 0x0;
         chBlindWinPrm->chId = chId;
         chBlindWinPrm->numWindows = DEMO_OSD_NUM_BLIND_WINDOWS;
 
@@ -200,6 +199,7 @@ Int32 Demo_osdInit(UInt32 numCh, UInt8 *osdFormat)
             /* copy logo to buffer  */
             if(osdFormat[chId] == SYSTEM_DF_YUV422I_YUYV)
             {
+			printf("OSD is SYSTEM_DF_YUV422I_YUYV\n");
                 chWinPrm->winPrm[winId].format     = SYSTEM_DF_YUV422I_YUYV;
                 chWinPrm->winPrm[winId].addr[0][1] = NULL;
 

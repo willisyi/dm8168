@@ -134,7 +134,8 @@ void font16(char *incode,char *dest)
 */
 Void font2Yuv(unsigned char *dest,unsigned char *src,int len)
 {
-    BYTE a[2]={0x00,0x7D};
+    //BYTE a[2]={0x00,0x7D};
+BYTE a[2]={0x00,0x00};
     BYTE b[2]={0xFF,0x7D};
     int i;
     for(i=0;i<len ;i++)
@@ -214,14 +215,14 @@ UInt32 FontGetAllYUYVData(unsigned char* allYuvbuf,char *src,int fontSize,unsign
 	{
 		*changdu=16;
 		*mianji=*changdu*length/2;
-		osd16(cn_422i_420_30_YuvData,allYuvbuf,length/2);
+		osd16(cn_422i_420_30_YuvDataMy,allYuvbuf,length/2);
 	}
 	if(fontSize==32)
 	{
 		*changdu=32;
 		*mianji=*changdu*length/2;
 		//memcpy(cn_422i_420_30_YuvData,AllYuvbuf,2048);
-		osd32(cn_422i_420_30_YuvData,allYuvbuf,length/2);
+		osd32(cn_422i_420_30_YuvDataMy,allYuvbuf,length/2);
 	}	
 	 free(p);
 	 free(buffer);

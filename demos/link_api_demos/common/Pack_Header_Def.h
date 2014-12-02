@@ -209,8 +209,8 @@ typedef struct PES_HEADER_tag
 typedef struct PTS_tag
 //struct PTS_tag
 {
-	unsigned char marker_bit:1;//表示只占1位
-	unsigned char PTS1:3;//位域，位段
+	unsigned char marker_bit:1;
+	unsigned char PTS1:3;
 	unsigned char fix_bit:4;
 
 	unsigned char PTS21;
@@ -294,6 +294,6 @@ int make_ps_packet_header(unsigned char *_pHeader,unsigned int _iFrameIndex,unsi
 int make_pes_packet_header(unsigned char *_pHeader,unsigned int _iFrameIndex,unsigned int _ui_data_length,unsigned char Packet_Type,unsigned int fps);
 int make_sys_packet_header(unsigned char *pHeader);
 unsigned int make_ps_packet(unsigned char *pPacket, NALU_t *Nalu,unsigned int Frame_Index,unsigned int Stop_Flag);
-void ps_package(FILE* fd,NALU_t nalu,char* pbuf,int length,unsigned int *Frame_Index);
+void ps_package(FILE *fd,NALU_t nalu,char* pbuf,int length,unsigned int *Frame_Index);
 
 #endif /*__HEADER_PACK_HEADER_DEF_H__*/
