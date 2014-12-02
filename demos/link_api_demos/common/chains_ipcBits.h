@@ -28,6 +28,7 @@ Void Chains_ipcBitsInitCreateParams_BitsOutHLOS(IpcBitsOutLinkHLOS_CreateParams 
 Void Chains_ipcBitsInitCreateParams_BitsInRTOS(IpcBitsInLinkRTOS_CreateParams *cp,
                                                 Bool notifyNextLink);
 Void Chains_ipcBitsInitCreateParams_BitsInHLOS(IpcBitsInLinkHLOS_CreateParams *cp);
+Void Chains_ipcBitsInitCreateParams_BitsInHLOSVcap(IpcBitsInLinkHLOS_CreateParams *cp);
 Void Chains_ipcBitsInitSetBitsOutNoNotifyMode(Bool noNotifyMode);
 Void Chains_ipcBitsInitSetBitsInNoNotifyMode(Bool noNotifyMode);
 Void Chains_ipcBitsStop(void);

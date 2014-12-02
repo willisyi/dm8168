@@ -10,22 +10,7 @@
 #ifndef _SCD_BIT_WR_H_
 #define _SCD_BIT_WR_H_
 
-#include <osa.h>
-#include <osa_thr.h>
-#include <osa_sem.h>
-
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <stddef.h>
-#include <errno.h>
-#include <ctype.h>
-#include <sys/wait.h>
-#include <sys/types.h>  // For stat().
-#include <sys/stat.h>   // For stat().
-#include <assert.h>
-#include <unistd.h>
-#include <fcntl.h>
+#include <demos/mcfw_api_demos/mcfw_demo/demo.h>
 #include<math.h>
 
 //#define IPC_BITS_DEBUG
@@ -61,15 +46,15 @@ typedef struct {
     Bool        exitWrThr;
     Bool        isWrThrStopDone;
 
-    Scd_ChInfo chInfo[VENC_CHN_MAX];
+    Scd_ChInfo chInfo[48]; //chInfo[VENC_CHN_MAX];
 
     UInt32 statsStartTime;
-#if DEMO_SCD_ENABLE_FILE_WRITE
+#if 1//DEMO_SCD_ENABLE_FILE_WRITE
     Bool fileWriteEnable;
     char fileWriteName[512];
     UInt32  chId;
 #endif
-    UInt32  winId[VCAP_CHN_MAX];
+    UInt32  winId[16];
     UInt32  fileWriteChn;
     Bool    enableMotionTracking;
     UInt32  chIdTrack;
@@ -85,7 +70,7 @@ typedef struct {
 
 extern Scd_Ctrl gScd_ctrl;
 
-
+VCAP_CALLBACK_S       gbitscallbackFxn;
 Int32 Scd_resetStatistics();
 Int32 Scd_printStatistics(Bool resetStats);
 

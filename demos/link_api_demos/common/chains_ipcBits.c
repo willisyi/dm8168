@@ -1356,6 +1356,32 @@ Void Chains_ipcBitsInitCreateParams_BitsInHLOS(IpcBitsInLinkHLOS_CreateParams *c
     cp->baseCreateParams.notifyPrevLink = TRUE;
 }
 
+static Void Chains_ipcBitsInCbFxnScd (Ptr cbCtx)
+{
+    Chains_IpcBitsCtrl *chains_ipcBitsCtrl;
+	static Int printInterval;
+	//do my work!!
+	        OSA_printf("!!!!Here to realize Scd status get!!");
+
+    if ((printInterval % CHAINS_IPCBITS_INFO_PRINT_INTERVAL) == 0)
+    {
+        OSA_printf("CHAINS_IPCBITS: Callback function:%s",__func__);
+    }
+    printInterval++;
+}
+Void Chains_ipcBitsInitCreateParams_BitsInHLOSVCap(IpcBitsInLinkHLOS_CreateParams *cp)
+{
+    cp->baseCreateParams.noNotifyMode = gChains_ipcBitsCtrl.noNotifyBitsInHLOS;
+    cp->cbFxn = Chains_ipcBitsInCbFxnScd;
+    cp->cbCtx = NULL;
+    cp->baseCreateParams.notifyNextLink = FALSE;
+    /* Previous link of bitsInHLOS is bitsOutRTOS. So, notifyPrevLink
+     * should be set to false if bitsInHLOS is to operate in
+     * NO_NOTIFY_MODE
+     */
+    cp->baseCreateParams.notifyPrevLink = TRUE;
+}
+
 Void Chains_ipcBitsInitCreateParams_BitsInRTOS(IpcBitsInLinkRTOS_CreateParams *cp,
                                                 Bool notifyNextLink)
 {
