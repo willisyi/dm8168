@@ -65,6 +65,9 @@ typedef struct {
     Bool    drawGrid;
     Bool    gridPresent;
     Bool    layoutUpdate;
+
+	//guo
+	UInt32 ipcBitsInHLOSId;
 } Scd_Ctrl;
 
 
@@ -74,7 +77,7 @@ VCAP_CALLBACK_S       gbitscallbackFxn;
 Int32 Scd_resetStatistics();
 Int32 Scd_printStatistics(Bool resetStats);
 
-Int32 Scd_bitsWriteCreate(UInt32 useCase);
+Int32 Scd_bitsWriteCreate(UInt32 useCase,UInt32 ipcId);
 Int32 Scd_bitsWriteDelete();
 Void Scd_bitsWriteStop();
 Void Scd_enableMotionTracking();

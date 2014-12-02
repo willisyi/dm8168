@@ -179,6 +179,70 @@ Bool Scd_isMotionTrackingEnabled()
     return (gScd_ctrl.enableMotionTracking);
 }
 #endif
+static Void Scd_copyBitBufInfoLink2McFw(VALG_FRAMERESULTBUF_S *dstBuf,
+                                         Bitstream_Buf    *srcBuf)
+{
+    dstBuf->reserved       = (UInt32)srcBuf;
+    dstBuf->bufVirtAddr    = srcBuf->addr;
+    dstBuf->bufSize        = srcBuf->bufSize;
+    dstBuf->chnId          = srcBuf->channelNum;
+    dstBuf->filledBufSize  = srcBuf->fillLength;
+    dstBuf->timestamp      = srcBuf->timeStamp;
+    dstBuf->upperTimeStamp = srcBuf->upperTimeStamp;
+    dstBuf->lowerTimeStamp = srcBuf->lowerTimeStamp;
+    dstBuf->bufPhysAddr    = (Void *)srcBuf->phyAddr;
+    dstBuf->frameWidth     = srcBuf->frameWidth;
+    dstBuf->frameHeight    = srcBuf->frameHeight;
+
+}
+Int32 Scd_getAlgResultBuffer(VALG_FRAMERESULTBUF_LIST_S *pBitsBufList, UInt32 timeout)
+{
+    Bitstream_BufList ipcBufList;
+    Bitstream_Buf *pInBuf;
+    VALG_FRAMERESULTBUF_S *pOutBuf;
+    UInt32 i;
+
+    pBitsBufList->numBufs = 0;
+    ipcBufList.numBufs = 0;
+
+    IpcBitsInLink_getFullVideoBitStreamBufs(gScd_ctrl.ipcBitsInHLOSId,
+                                            &ipcBufList);
+
+    pBitsBufList->numBufs = ipcBufList.numBufs;
+    for (i = 0; i < ipcBufList.numBufs; i++)
+    {
+        pOutBuf = &pBitsBufList->bitsBuf[i];
+        pInBuf = ipcBufList.bufs[i];
+
+        Scd_copyBitBufInfoLink2McFw(pOutBuf,pInBuf);	/*by guo */
+    }
+
+    return 0;
+}
+
+Int32 Scd_releaseAlgResultBuffer(VALG_FRAMERESULTBUF_LIST_S *pBitsBufList)
+{
+    VALG_FRAMERESULTBUF_S *pOutBuf;
+    Bitstream_BufList ipcBufList;
+    UInt32 i;
+    Int status = 0;
+
+   // VCAP_TRACE_FXN_ENTRY("Num bufs released:%d",pBitsBufList->numBufs);
+    ipcBufList.numBufs = pBitsBufList->numBufs;
+    for (i = 0; i < ipcBufList.numBufs; i++)
+    {
+        pOutBuf = &pBitsBufList->bitsBuf[i];
+        ipcBufList.bufs[i] = (Bitstream_Buf*)pBitsBufList->bitsBuf[i].reserved;
+    }
+    if (ipcBufList.numBufs)
+    {
+        status =
+        IpcBitsInLink_putEmptyVideoBitStreamBufs(gScd_ctrl.ipcBitsInHLOSId,
+                                                 &ipcBufList);
+    }
+   // VCAP_TRACE_FXN_ENTRY("Buf release status:%d",status);
+    return 0;
+}
 void *Scd_bitsWriteMain(void *pPrm)
 {
     Int32                      status, frameId;
@@ -191,18 +255,29 @@ void *Scd_bitsWriteMain(void *pPrm)
 
     while(!gScd_ctrl.exitWrThr)
     {
-    	OSA_printf("!!!NOW IN!%s",__func__);
+    	
         status = OSA_semWait(&gScd_ctrl.wrSem, OSA_TIMEOUT_FOREVER);
         if(status!=OSA_SOK)
             break;
-	OSA_printf("!!!!!!!Here I wanted!");
+        trackChId = gScd_ctrl.chIdTrack;             /* so that channel to be displayed/tracked is not changed by parallel threads */
+
+        status = Scd_getAlgResultBuffer(&bitsBuf, TIMEOUT_NO_WAIT);  /*by guo */
+	/*
+		TMOD:Please apply your app refering to Demo_scd_bits_wr.c
+		By:guo8113
+	*/
+	OSA_printf("!!!!!!!Here I wanted!");		
+	Scd_releaseAlgResultBuffer(&bitsBuf);	/*by guo */
+
     }
 
     gScd_ctrl.isWrThrStopDone = TRUE;
     return NULL;
 }
 
-Int32 Scd_bitsWriteCreate(UInt32 demoId)
+
+
+Int32 Scd_bitsWriteCreate(UInt32 demoId,UInt32  ipcBitsInHostId)
 {
 
     Int32 status;
@@ -213,7 +288,7 @@ Int32 Scd_bitsWriteCreate(UInt32 demoId)
     gScd_ctrl.numberOfWindows      = SCD_MAX_CHANNELS;
     gScd_ctrl.drawGrid             = FALSE;
     gScd_ctrl.enableMotionTracking = FALSE;
-
+	gScd_ctrl.ipcBitsInHLOSId = ipcBitsInHostId;//added by guo .
 
 #if 1
     /* Making chanOffset zero as in Ne-Prog, SCD channels start from Chan-0 */
