@@ -199,7 +199,6 @@ chWinPrm->colorKey[2] = 0x0;
             /* copy logo to buffer  */
             if(osdFormat[chId] == SYSTEM_DF_YUV422I_YUYV)
             {
-			printf("OSD is SYSTEM_DF_YUV422I_YUYV\n");
                 chWinPrm->winPrm[winId].format     = SYSTEM_DF_YUV422I_YUYV;
                 chWinPrm->winPrm[winId].addr[0][1] = NULL;
 
