@@ -266,7 +266,9 @@ void *Scd_bitsWriteMain(void *pPrm)
 		TMOD:Please apply your app refering to Demo_scd_bits_wr.c
 		By:guo8113
 	*/
-	OSA_printf("!!!!!!!Here I wanted!");		
+	//grpx_draw_box(500,500,500,500);
+	
+	//OSA_printf("!!!!!!!Here I wanted!");		
 	Scd_releaseAlgResultBuffer(&bitsBuf);	/*by guo */
 
     }

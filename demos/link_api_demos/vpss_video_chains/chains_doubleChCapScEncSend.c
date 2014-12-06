@@ -195,6 +195,7 @@ Void Chains_doubleChCapScEncSend(Chains_Ctrl *chainsCfg)
 
 
 	Scd_bitsWriteCreate(0,ipcBitsInHostId2);	//Init scd's ipcBitsInHost by:guo8113
+	
 //----------------end scd-----------------------------
     Chains_ipcBitsInit();		
 
@@ -647,13 +648,16 @@ Void Chains_doubleChCapScEncSend(Chains_Ctrl *chainsCfg)
        System_linkCreate(displayId[i], &displayPrm[i], sizeof(displayPrm[i]));
     }
 
-    Chains_memPrintHeapStatus();
+    //Chains_memPrintHeapStatus();
+
    
     System_linkStart(encId);
     for (i=0; i<2; i++) {
           System_linkStart(displayId[i]);
           System_linkStart(swMsId[i]);
     }
+
+  	grpx_init(GRPX_FORMAT_RGB888);
 	
      System_linkStart(dup2Id);
      System_linkStart(nsfId);
@@ -676,6 +680,8 @@ Void Chains_doubleChCapScEncSend(Chains_Ctrl *chainsCfg)
 //----------------------------------
         System_linkStart(mergeId);
         System_linkStart(captureId);
+ 	//grpx_fb_draw_demo();
+
 
         while(1)
         {
@@ -684,6 +690,7 @@ Void Chains_doubleChCapScEncSend(Chains_Ctrl *chainsCfg)
 			
             ch = Chains_menuRunTime();
             if(ch=='0')
+
                 break;
             if(ch=='v')
                 System_linkControl(captureId, CAPTURE_LINK_CMD_FORCE_RESET, NULL, 0, TRUE);
@@ -699,6 +706,19 @@ Void Chains_doubleChCapScEncSend(Chains_Ctrl *chainsCfg)
 	   	Vsys_printDetailedStatistics();
 		continue;
 	   }
+	   if(ch == 'd')//draw
+	   	{
+	   		 grpx_draw_box(500,500,500,500);//在HDMI2上画了出来
+	   		 grpx_fb_draw_grid(300,300,200,100,11);
+	   		 continue;
+	   	}
+	   if(ch == 'x')
+	   	{
+	   	grpx_draw_box_exit(500,500,500,500);
+		grpx_fb_draw_grid_exit(300,300,200,100,11);
+	 	grpx_exit();
+		continue;
+	   	}
 
           {
             	 Bool switchCh = FALSE;

@@ -719,7 +719,8 @@ int grpx_fb_init(grpx_plane_type planeType)
 #endif
 
     system("echo 0 > /sys/devices/platform/vpss/graphics0/enabled");
-    system("echo 1:dvo2 > /sys/devices/platform/vpss/graphics0/nodes");
+    //system("echo 1:dvo2 > /sys/devices/platform/vpss/graphics0/nodes");
+    system("echo 0:hdmi > /sys/devices/platform/vpss/graphics0/nodes");//guo
     system("echo 1 > /sys/devices/platform/vpss/graphics0/enabled");
 
     return 0;
