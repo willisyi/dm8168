@@ -172,7 +172,7 @@ typedef struct Chains_IpcBitsCtrlFileObj {
 
 typedef struct Chains_IpcBitsCtrlThrObj {
     OSA_ThrHndl thrHandleBitsIn;
-    OSA_ThrHndl thrHandleBitsInA;   //cmj set 3.11
+    OSA_ThrHndl thrHandleBitsInA;   //cmj set 3.11 for audio thread
     OSA_ThrHndl thrHandleBitsOut;
     OSA_QueHndl bufQFullBufs;
     OSA_QueHndl bufQFreeBufs;
@@ -206,7 +206,7 @@ shared_use *shared_stuff;//struct  used for networkshare
 int shmid[NUM_RTSP];
 int semEmpty[NUM_RTSP],semFull[NUM_RTSP]; 
 int semEmpty_audio,semFull_audio;
-void *Videoptr[NUM_RTSP];
+void *Videoptr[NUM_RTSP];//Pointers to shared mem of network sharing
 void *audioptr = (void *)0;
 
 void Chains_ipcBitsShareMemInit()
@@ -290,7 +290,7 @@ void inline Copy2SendBuf(Bitstream_BufList*  fullBufList)
 	          shared_stuff->frame.data_size = pFullBuf->fillLength;
 	          shared_stuff->frame.I_Frame = pFullBuf->isKeyFrame;
                   shared_stuff->frame.timestamp = pFullBuf->timeStamp;		  
-	          if (!semaphore_v(semFull))     //V() +1
+	          if (!semaphore_v(semFull[ch]))     //V() +1
 	  	    {
 	  		printf("semaphore_v() video error ! \n");
                         exit(EXIT_FAILURE);
@@ -343,7 +343,7 @@ static Void *Chains_ipcBitsRtspAudioServerFxn(Void * prm)
     static Int printStats;
     int startflag = 1;
     int audiocnt = 0;
- 
+  shared_use *shmPtr1;
 	if(gChains_ctrl.channelConf[0].audioEnable)
 	{
 		    if(AudioOn==AUDIO_ON)
@@ -357,13 +357,13 @@ static Void *Chains_ipcBitsRtspAudioServerFxn(Void * prm)
 		      Audio_captureDelete ();
 		      AudioOn=AUDIO_XX;
 		  }
-                audioptr = shmat(shmid,0,0);
+                audioptr = shmat(shmid[0],0,0);//only ch0 has sound
+		shmPtr1 =( shared_use *)audioptr;			
 	         if(audioptr == (void *)-1)
 	    	  {
 	    	         OSA_printf("Audio shmat error\n");
 			   exit(EXIT_FAILURE);
 	    	  }
-	        shared_stuff = ( shared_use *)audioptr;
 			 
                 semEmpty_audio = semget((key_t)1222, 1, 0666 | IPC_CREAT);
 	        if (!set_semvalue(semEmpty_audio,1)) 
@@ -382,6 +382,7 @@ static Void *Chains_ipcBitsRtspAudioServerFxn(Void * prm)
 
   
     OSA_printf("CHAINS_IPCBITS:%s:Entered...",__func__);
+
     while (FALSE == thrObj->exitBitsInThread)
     {
         //OSA_semWait(&thrObj->bitsInNotifySem,OSA_TIMEOUT_FOREVER);
@@ -397,9 +398,9 @@ static Void *Chains_ipcBitsRtspAudioServerFxn(Void * prm)
 		  		          printf("semaphore_p()  audio error ! \n");
 	                              exit(EXIT_FAILURE);		 	
 	  		           }
-	                        memcpy(shared_stuff->buf.buf_encode, audiobag.buf_encode, audiobag.data_size);  
-				    shared_stuff->buf.data_size = audiobag.data_size;
-				    shared_stuff->buf.timestamp = audiobag.timestamp;
+	                        memcpy(shmPtr1->buf.buf_encode, audiobag.buf_encode, audiobag.data_size);  
+				    shmPtr1->buf.data_size = audiobag.data_size;
+				    shmPtr1->buf.timestamp = audiobag.timestamp;
 
 				    	//    printf("[8168]audio size is %d\n",audiobag.data_size);
 			     
@@ -1619,6 +1620,8 @@ Void Chains_ipcBitsStop(void)
 //******dyx20131108******
 Void Chains_ipcBitsLocStStop(void)
 {
+    gChains_ipcBitsCtrl.thrObj.exitBitsInThread = FALSE;
+   gChains_ipcBitsCtrl.thrObj.exitBitsOutThread = FALSE;
     OSA_thrDelete(&gChains_ipcBitsCtrl.thrObj);
     //guo repair debug/
  //   OSA_thrDelete(&gChains_ipcBitsCtrl.thrObj.thrHandleBitsIn);
