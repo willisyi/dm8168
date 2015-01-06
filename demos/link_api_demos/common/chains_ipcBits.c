@@ -153,7 +153,14 @@ typedef struct FrameBuf
 #define CHAINS_IPC_BITS_TRACE_FXN_ENTRY(...)
 #define CHAINS_IPC_BITS_TRACE_FXN_EXIT(...)
 #endif
-
+///////added by guo for RTP wis-streamer//////
+#define NUM_RTSP 2
+shared_use *shared_stuff;//struct  used for networkshare
+int shmid[NUM_RTSP];
+int semEmpty[NUM_RTSP],semFull[NUM_RTSP]; 
+int semEmpty_audio,semFull_audio;
+void *Videoptr[NUM_RTSP];//Pointers to shared mem of network sharing
+void *audioptr = (void *)0;
 
 enum Chains_IpcBitsFileType {
     CHAINS_IPC_BITS_FILETYPE_HDR,
@@ -181,6 +188,110 @@ typedef struct Chains_IpcBitsCtrlThrObj {
     volatile Bool exitBitsOutThread;
 } Chains_IpcBitsCtrlThrObj;
 
+//added by guo for RTSP
+typedef struct Chains_myRtspSvrThrObj{
+	OSA_ThrHndl thrHandleRtspCh1;
+	OSA_ThrHndl thrHandleRtspCh2;
+	OSA_SemHndl Sem[2];
+	shared_use * avData[2];
+	volatile Bool exitRtspCh1;
+    	volatile Bool exitRtspCh2;
+}Chains_myRtspSvrThrObj;
+Chains_myRtspSvrThrObj gRtspThrObj;
+
+void RtspServer1Main(void *pPrm)
+{
+	int ch=0;
+	while(!gRtspThrObj.exitRtspCh1)
+	{
+		int status = OSA_semWait(&gRtspThrObj.Sem[ch], OSA_TIMEOUT_FOREVER);
+		printf("  !!!!!!!![guo]Rstp1.....\n");
+		shared_stuff = (shared_use *)Videoptr[ch];
+		
+		if (!semaphore_p(semEmpty[ch]))     //P() -1
+	  	{
+	  		  printf("semaphore_p()  video error ! \n");
+                          exit(EXIT_FAILURE);		 	
+  		}	
+	   	 memcpy(shared_stuff, gRtspThrObj.avData[ch],sizeof(shared_use));
+	  
+	          if (!semaphore_v(semFull[ch]))     //V() +1
+	  	    {
+	  		printf("semaphore_v() video error ! \n");
+                        exit(EXIT_FAILURE);
+  		    }
+	}
+}
+
+void RtspServer2Main(void *pPrm)
+{
+	int ch = 1;
+	while(!gRtspThrObj.exitRtspCh2)
+	{
+		int status = OSA_semWait(&gRtspThrObj.Sem[ch], OSA_TIMEOUT_FOREVER);
+		printf("  !!!!!!!![guo]Rstp2.....\n");
+		shared_stuff = (shared_use *)Videoptr[ch];
+		if (!semaphore_p(semEmpty[ch]))     //P() -1
+	  	{
+	  		  printf("semaphore_p()  video error ! \n");
+                          exit(EXIT_FAILURE);		 	
+  		}	
+	   	 memcpy(shared_stuff, gRtspThrObj.avData[ch],sizeof(shared_use));
+	  
+	          if (!semaphore_v(semFull[ch]))     //V() +1
+	  	    {
+	  		printf("semaphore_v() video error ! \n");
+                        exit(EXIT_FAILURE);
+  		    }
+	}
+}
+
+
+//Func to Init thread.
+static void Guo_doRtspServerThrInit()
+{
+	//[guo]added 2015/1/6
+	gRtspThrObj.exitRtspCh1 = FALSE;
+	gRtspThrObj.exitRtspCh2 = FALSE;
+	gRtspThrObj.avData[0] =(shared_use*) malloc(sizeof(shared_use));
+	gRtspThrObj.avData[1] =(shared_use*) malloc(sizeof(shared_use));
+	
+	int status = OSA_semCreate(&gRtspThrObj.Sem[0], 1, 0);
+	status = OSA_semCreate(&gRtspThrObj.Sem[1], 1, 0);
+	status = OSA_thrCreate(
+        &gRtspThrObj.thrHandleRtspCh1,
+        RtspServer1Main,
+        OSA_THR_PRI_DEFAULT,
+        0,
+        &gRtspThrObj
+   	  );
+	
+	status = OSA_thrCreate(
+        &gRtspThrObj.thrHandleRtspCh1,
+        RtspServer2Main,
+        OSA_THR_PRI_DEFAULT,
+        0,
+        &gRtspThrObj
+    	 );
+	
+}
+static void Guo_doRtspServerThrDeInit()
+{
+	gRtspThrObj.exitRtspCh1 = TRUE;
+	gRtspThrObj.exitRtspCh2 = TRUE;
+	OSA_semSignal(&gRtspThrObj.Sem[0]);
+	OSA_semSignal(&gRtspThrObj.Sem[1]);
+	OSA_waitMsecs(10);//wait for thread end
+
+	free(gRtspThrObj.avData[0]);
+	free(gRtspThrObj.avData[1]);
+		
+    	OSA_thrDelete(&gRtspThrObj.thrHandleRtspCh1);
+	OSA_thrDelete(&gRtspThrObj.thrHandleRtspCh2);
+   	 OSA_semDelete(&gRtspThrObj.Sem[0]);
+	 OSA_semDelete(&gRtspThrObj.Sem[1]);	
+}
+/////
 typedef struct Chains_IpcBitsCtrl {
     Bool  noNotifyBitsInHLOS;
     Bool  noNotifyBitsOutHLOS;;
@@ -200,14 +311,7 @@ Chains_IpcBitsCtrl gChains_ipcBitsCtrl =
     .noNotifyBitsOutHLOS = CHAINS_IPC_BITS_NONOTIFYMODE_BITSOUT,
 };
 
-///////added by guo for RTP wis-streamer//////
-#define NUM_RTSP 2
-shared_use *shared_stuff;//struct  used for networkshare
-int shmid[NUM_RTSP];
-int semEmpty[NUM_RTSP],semFull[NUM_RTSP]; 
-int semEmpty_audio,semFull_audio;
-void *Videoptr[NUM_RTSP];//Pointers to shared mem of network sharing
-void *audioptr = (void *)0;
+
 
 void Chains_ipcBitsShareMemInit()
 {
@@ -269,56 +373,49 @@ void Chains_ipcBitsShareMemDeInit()
            del_semvalue(semFull_audio);
     }
 }
-void inline Copy2SendBuf(Bitstream_BufList*  fullBufList)
-{
-    Bitstream_Buf *pFullBuf;
-    Bitstream_Buf *pEmptyBuf;
-    int i,ch;
-      for (i = 0; i < fullBufList->numBufs; i++)
-      {
-            pFullBuf = fullBufList->bufs[i];
-	    if ( (pFullBuf->fillLength > 0) &&(pFullBuf->channelNum<NUM_RTSP) )//only rtp NUM-RTSP channels
-	   { 
-	       ch = pFullBuf->channelNum;
-		shared_stuff = (shared_use *)Videoptr[ch];
-		if (!semaphore_p(semEmpty[ch]))     //P() -1
-	  	{
-	  		  printf("semaphore_p()  video error ! \n");
-                          exit(EXIT_FAILURE);		 	
-  		}	
-	   	 memcpy(shared_stuff->frame.buf_encode , pFullBuf->addr,pFullBuf->fillLength);
-	          shared_stuff->frame.data_size = pFullBuf->fillLength;
-	          shared_stuff->frame.I_Frame = pFullBuf->isKeyFrame;
-                  shared_stuff->frame.timestamp = pFullBuf->timeStamp;		  
-	          if (!semaphore_v(semFull[ch]))     //V() +1
-	  	    {
-	  		printf("semaphore_v() video error ! \n");
-                        exit(EXIT_FAILURE);
-  		    }
-	      }
-        }
-}
+
+
 static Void *Chains_ipcBitsRtspServerFxn(Void * prm)
 {
     Chains_IpcBitsCtrl *ipcBitsCtrl = (Chains_IpcBitsCtrl *) prm;
     Chains_IpcBitsCtrlThrObj *thrObj = &ipcBitsCtrl->thrObj;
     Bitstream_BufList fullBufList;
-
+    Bitstream_Buf *pFullBuf;
+    Bitstream_Buf *pEmptyBuf;
     static Int printStats;
+	 int i,ch;
     //视频共享内存及信号量初始化
     //for rtsp
- 	Chains_ipcBitsShareMemInit();
-   
+    Chains_ipcBitsShareMemInit();
+
+    Guo_doRtspServerThrInit();	//[guo]//Init RTSP Server Thread.
+    
     OSA_printf("CHAINS_IPCBITS:%s:Entered...",__func__);
     while (FALSE == thrObj->exitBitsInThread)
     {
         //OSA_semWait(&thrObj->bitsInNotifySem,OSA_TIMEOUT_FOREVER);
         OSA_waitMsecs(CHAINS_IPCBITS_SENDFXN_PERIOD_MS/2);
-
+		
         IpcBitsInLink_getFullVideoBitStreamBufs(SYSTEM_HOST_LINK_ID_IPC_BITS_IN_0,
                                                 &fullBufList);
-//process
-      	Copy2SendBuf(&fullBufList);
+	 // 	copy video data to RTSP buf
+	for (i = 0; i < fullBufList.numBufs; i++)
+      {
+            pFullBuf = fullBufList.bufs[i];
+	     ch = pFullBuf->channelNum;
+	    if ((ch<2)&& (pFullBuf->fillLength > 0)  )//only RTP ch0&ch1
+	   { 
+
+		shared_stuff = (shared_use *)gRtspThrObj.avData[ch];
+
+	   	 memcpy(shared_stuff->frame.buf_encode , pFullBuf->addr,pFullBuf->fillLength);
+	          shared_stuff->frame.data_size = pFullBuf->fillLength;
+	          shared_stuff->frame.I_Frame = pFullBuf->isKeyFrame;
+                  shared_stuff->frame.timestamp = pFullBuf->timeStamp;	
+			//call RTSP thread
+		OSA_semSignal(&gRtspThrObj.Sem[ch]);
+	     }
+        }
 	   
         IpcBitsInLink_putEmptyVideoBitStreamBufs(SYSTEM_HOST_LINK_ID_IPC_BITS_IN_0,
                                                  &fullBufList);
@@ -327,7 +424,8 @@ static Void *Chains_ipcBitsRtspServerFxn(Void * prm)
             OSA_printf("CHAINS_IPCBITS:%s:INFO: periodic print..",__func__);
         }
         printStats++;
-    }    
+    }   
+	Guo_doRtspServerThrDeInit();
 	//for rtsp	
     Chains_ipcBitsShareMemDeInit();
     OSA_printf("CHAINS_IPCBITS:%s:Leaving...",__func__);
@@ -806,66 +904,7 @@ static Void *Chains_ipcBitsRecvTcpSendFxn(Void * prm)
     close(clifd);
     return NULL;
 }
-/*
-static Void *Chains_ipcBitsRecvRtspServerFxn(Void * prm)
-{
-    OSA_printf(" Here is ipcBitRecvRtspServer\n");//Sue add 20130115
-    Chains_IpcBitsCtrl *ipcBitsCtrl = (Chains_IpcBitsCtrl *) prm;
-    Chains_IpcBitsCtrlThrObj *thrObj = &ipcBitsCtrl->thrObj;
-    Bitstream_BufList fullBufList;
-    Bitstream_Buf *pFullBuf;
-    Bitstream_Buf *pEmptyBuf;
-    static Int printStats;
-    int fdLiveServer[16];
-    char filename[256];
 
-    Int i;
-    for (i=0; i<gChains_ctrl.channelNum; i++) 
-   {
-        sprintf(filename, "/tmp/liveServer%d.264", i);
-        fdLiveServer[i] = open(filename, O_WRONLY);
-        if (fdLiveServer < 0) 
-	 {
-            OSA_printf("Can't open file %s\n", filename);
-            return NULL;
-        }
-        OSA_printf("open file %s", filename);
-    }
-
-    OSA_printf("CHAINS_IPCBITS:%s:Entered...",__func__);
-    while (FALSE == thrObj->exitBitsInThread)
-    {
-        //OSA_semWait(&thrObj->bitsInNotifySem,OSA_TIMEOUT_FOREVER);
-        OSA_waitMsecs(CHAINS_IPCBITS_SENDFXN_PERIOD_MS);
-
-         IpcBitsInLink_getFullVideoBitStreamBufs(SYSTEM_HOST_LINK_ID_IPC_BITS_IN_0,
-                                                &fullBufList);
-
-
-        for (i = 0; i < fullBufList.numBufs; i++)
-        {
-            pFullBuf = fullBufList.bufs[i];
-            if (pFullBuf->fillLength > 0) {
-                write(fdLiveServer[pFullBuf->channelNum], pFullBuf->addr, pFullBuf->fillLength);
-            }
-        }
-
-        IpcBitsInLink_putEmptyVideoBitStreamBufs(SYSTEM_HOST_LINK_ID_IPC_BITS_IN_0,
-                                                 &fullBufList);
-
-        if ((printStats % CHAINS_IPCBITS_INFO_PRINT_INTERVAL) == 0)
-        {
-            OSA_printf("CHAINS_IPCBITS:%s:INFO: periodic print..",__func__);
-        }
-        printStats++;
-    }
-    OSA_printf("CHAINS_IPCBITS:%s:Leaving...",__func__);
-    for (i=0; i<gChains_ctrl.channelNum; i++) {
-        close(fdLiveServer[i]);
-    }
-    return NULL;
-}
-*/
 //use fifo write for RTSP send   //origin
 static Void *Chains_ipcBitsRecvRtspServerFxn(Void * prm)
 {
@@ -1370,6 +1409,7 @@ static Void Chains_ipcBitsInCbFxnScd (Ptr cbCtx)
     }
     printInterval++;
 }
+// register call back for scd not used,have used Chains_scd_bits_wr.c instead
 Void Chains_ipcBitsInitCreateParams_BitsInHLOSVCap(IpcBitsInLinkHLOS_CreateParams *cp)
 {
     cp->baseCreateParams.noNotifyMode = gChains_ipcBitsCtrl.noNotifyBitsInHLOS;
@@ -1620,8 +1660,8 @@ Void Chains_ipcBitsStop(void)
 //******dyx20131108******
 Void Chains_ipcBitsLocStStop(void)
 {
-    gChains_ipcBitsCtrl.thrObj.exitBitsInThread = FALSE;
-   gChains_ipcBitsCtrl.thrObj.exitBitsOutThread = FALSE;
+    gChains_ipcBitsCtrl.thrObj.exitBitsInThread =TRUE;
+   gChains_ipcBitsCtrl.thrObj.exitBitsOutThread = TRUE;
     OSA_thrDelete(&gChains_ipcBitsCtrl.thrObj);
     //guo repair debug/
  //   OSA_thrDelete(&gChains_ipcBitsCtrl.thrObj.thrHandleBitsIn);

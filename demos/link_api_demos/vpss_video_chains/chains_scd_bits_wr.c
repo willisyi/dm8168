@@ -161,6 +161,7 @@ Void Scd_trackLayout(Uint32 numberOfWindows, Uint32 startChId)
     gScd_ctrl.layoutUpdate = TRUE;
     gScd_ctrl.drawGrid     = TRUE;
 }
+#endif
 
 Void Scd_enableMotionTracking()
 {
@@ -178,7 +179,7 @@ Bool Scd_isMotionTrackingEnabled()
 {
     return (gScd_ctrl.enableMotionTracking);
 }
-#endif
+
 static Void Scd_copyBitBufInfoLink2McFw(VALG_FRAMERESULTBUF_S *dstBuf,
                                          Bitstream_Buf    *srcBuf)
 {
@@ -243,6 +244,7 @@ Int32 Scd_releaseAlgResultBuffer(VALG_FRAMERESULTBUF_LIST_S *pBitsBufList)
    // VCAP_TRACE_FXN_ENTRY("Buf release status:%d",status);
     return 0;
 }
+#define USE_FBDEV 1
 void *Scd_bitsWriteMain(void *pPrm)
 {
     Int32                      status, frameId;
@@ -253,24 +255,343 @@ void *Scd_bitsWriteMain(void *pPrm)
     Uint32                     trackChId;
     Uint32                     chTag[VCAP_CHN_MAX], chIdx;       /* To keep track of which channels are being displayed in the current mosaic */
 
+
+    for(blkIdx = 0; blkIdx < ALG_LINK_SCD_MAX_BLOCKS_IN_FRAME; blkIdx++)
+    {
+       blkTag[blkIdx] = 0;
+    }
+
+    for(chIdx = 0; chIdx < 4; chIdx++)
+    {
+       chTag[chIdx] = 1;               /* initially all channels are being displayed as default layout is 4*4 */
+    }
+
     while(!gScd_ctrl.exitWrThr)
     {
-    	
         status = OSA_semWait(&gScd_ctrl.wrSem, OSA_TIMEOUT_FOREVER);
         if(status!=OSA_SOK)
             break;
+
         trackChId = gScd_ctrl.chIdTrack;             /* so that channel to be displayed/tracked is not changed by parallel threads */
 
-        status = Scd_getAlgResultBuffer(&bitsBuf, TIMEOUT_NO_WAIT);  /*by guo */
-	/*
-		TMOD:Please apply your app refering to Demo_scd_bits_wr.c
-		By:guo8113
-	*/
-	//grpx_draw_box(500,500,500,500);
-	
-	//OSA_printf("!!!!!!!Here I wanted!");		
-	Scd_releaseAlgResultBuffer(&bitsBuf);	/*by guo */
+        status = Scd_getAlgResultBuffer(&bitsBuf, TIMEOUT_NO_WAIT);
 
+        if(status==ERROR_NONE && bitsBuf.numBufs)
+        {
+            for(frameId=0; frameId<bitsBuf.numBufs; frameId++)
+            {
+                pBuf = &bitsBuf.bitsBuf[frameId];
+                if(pBuf->chnId<VENC_CHN_MAX)
+                {
+                    pChInfo = &gScd_ctrl.chInfo[pBuf->chnId];
+
+                    pChInfo->totalDataSize += pBuf->filledBufSize;
+                    pChInfo->numFrames++;
+
+                    if(pBuf->frameWidth > pChInfo->maxWidth)
+                        pChInfo->maxWidth = pBuf->frameWidth;
+
+                    if(pBuf->frameWidth < pChInfo->minWidth)
+                        pChInfo->minWidth = pBuf->frameWidth;
+
+                    if(pBuf->frameHeight > pChInfo->maxHeight)
+                        pChInfo->maxHeight = pBuf->frameHeight;
+
+                    if(pBuf->frameHeight < pChInfo->minHeight)
+                        pChInfo->minHeight = pBuf->frameHeight;
+
+                }
+
+
+#if DEMO_SCD_ENABLE_MOTION_TRACKING
+                {
+                    UInt32 numBlkChg;
+                    UInt32 monitoredBlk;
+                    UInt32 numHorzBlks, numVerBlks, numBlksInFrame, blkHeight;
+                    AlgLink_ScdResult *pChResult;
+                    UInt32 scdResultBuffChanId;
+#if USE_FBDEV
+                    UInt32  boxHorOffset, boxVerOffset;
+                    UInt32 winWidth, winHeight;
+                    UInt32 winStartX, winStartY;
+                    UInt32 winIdx = 0;
+                    Bool gridErase;
+                    UInt32 gridEraseNumWind, gridEraseWinId;
+
+                    int  width, height;
+                    int  startX, startY;
+                    int  scaleRatio;
+#endif
+                    pChResult = (AlgLink_ScdResult *)pBuf->bufVirtAddr;
+
+                        /* Not adding Offset  as in Ne-Prog, SCD channels start from Chan-0 */
+                        scdResultBuffChanId = pChResult->chId;
+                  
+                    monitoredBlk = 0;
+                    numBlkChg    = 0;
+
+                    numHorzBlks     = ((pBuf->frameWidth + 0x1F ) & (~0x1F)) / 32;  /* Rounding to make divisible by 32 */
+
+                    if((pBuf->frameHeight%ALG_LINK_SCD_BLK_HEIGHT_MIN) == 0)/* For Block height is divisible by 10 */
+                       blkHeight = ALG_LINK_SCD_BLK_HEIGHT_MIN;
+                    else   /* For Block height is divisible by 12 */
+                       blkHeight = ALG_LINK_SCD_BLK_HEIGHT;
+
+                    numVerBlks    = pBuf->frameHeight / blkHeight;
+
+                    numBlksInFrame = numHorzBlks * numVerBlks;
+
+#if USE_FBDEV
+                    /* To scale acc to number of windows(assuming square layout) */
+                    scaleRatio = sqrt(gScd_ctrl.numberOfWindows);
+
+                    /* Find out where the tracking channel is displayed on current mosaic */
+                    for(winIdx=0;winIdx < gScd_ctrl.numberOfWindows; winIdx++)
+                    {
+                        if(gScd_ctrl.winId[winIdx] == trackChId)
+                           break;
+                    }
+
+                    if(gScd_ctrl.layoutUpdate)      /* in case of SWITCH LAYOUT */
+                    {
+                        UInt32 idx;
+//                      OSA_printf(" Received starting chId for this layout are %d ",  gScd_ctrl.startChId);
+                        for(chIdx = 0; chIdx < VCAP_CHN_MAX; chIdx++)
+                        {
+                            chTag[chIdx] = 0;
+                        }
+                        for(idx=0;idx < gScd_ctrl.numberOfWindows; idx++)
+                        {
+                            chTag[gScd_ctrl.winId[idx]] = 1;
+
+                        }
+                        gScd_ctrl.layoutUpdate = FALSE;
+                    }
+
+
+                    boxHorOffset = DEMO_SCD_MOTION_TRACK_GRPX_WIDTH/numHorzBlks;// DEMO_SCD_MOTION_TRACK_BOX_WIDTH_CIF;
+                    if(pBuf->frameWidth == 352)
+                    {
+                         boxVerOffset       = DEMO_SCD_MOTION_TRACK_BOX_HEIGHT_CIF;
+                    }
+                    else
+                    {
+                         boxVerOffset       = DEMO_SCD_MOTION_TRACK_BOX_HEIGHT_QCIF;
+                    }
+
+                    if(gScd_ctrl.enableMotionTracking)
+                    {
+                        if((gScd_ctrl.gridPresent ==  TRUE) &&
+                            ((chTag[trackChId] != 1) ||                      /*if channel to be tracked does not lie on the current mosaic,*/
+                             (gScd_ctrl.prevWinIdTrack != winIdx) ||      /* to disable LMD if channel is switched or different channel is to be tracked */
+                                (gScd_ctrl.prevNumberOfWindows != gScd_ctrl.numberOfWindows)))  /* in case of SWITCH LAYOUT, REDRAW GRID(acc to new layout) */
+                        {
+                           gridErase           =  TRUE;
+                           gridEraseNumWind    =  gScd_ctrl.prevNumberOfWindows;
+                           gridEraseWinId      =  gScd_ctrl.prevWinIdTrack;
+                           OSA_printf("\n\n");
+                           if(chTag[trackChId] != 1)
+                           {
+                               OSA_printf(" [SCD MOTION TRACK]: Grid clean up when Tracking channel is not in Current Mosaic Layout \n");
+                               OSA_printf(" [SCD MOTION TRACK]: Starting Channel ID in the Current layout %d Max Channels in the Mosaic %d \n",
+                                          gScd_ctrl.startChId, gScd_ctrl.numberOfWindows);
+                           }
+                           if(gScd_ctrl.prevWinIdTrack != winIdx )
+                           {
+                               OSA_printf(" [SCD MOTION TRACK]: Grid clean up when Tracking channel changes \n");
+                               OSA_printf(" [SCD MOTION TRACK]: WinID of Previously Tracked Chan is %d WinId of Currently Tracked Chan is %d \n",
+                                          gScd_ctrl.prevWinIdTrack, winIdx);
+                           }
+                           if(gScd_ctrl.prevNumberOfWindows != gScd_ctrl.numberOfWindows )
+                           {
+                                 OSA_printf(" [SCD MOTION TRACK]: Grid clean up when Num Win changes \n");
+                                 OSA_printf(" [SCD MOTION TRACK]: Previous Num of Win %d Current Num of Win %d \n",
+                                          gScd_ctrl.prevNumberOfWindows, gScd_ctrl.numberOfWindows);
+                           }
+                           scaleRatio =  sqrt(gridEraseNumWind);
+                           winWidth  = GRPX_PLANE_GRID_WIDTH/scaleRatio;
+                           winHeight = GRPX_PLANE_GRID_HEIGHT/scaleRatio;
+                        }
+                        else
+                        {
+                            gridErase          = FALSE;;
+                            gridEraseNumWind    =  gScd_ctrl.prevNumberOfWindows;
+                            gridEraseWinId      =  gScd_ctrl.prevWinIdTrack;
+
+                            scaleRatio =  sqrt(gScd_ctrl.numberOfWindows);
+                            winWidth  = GRPX_PLANE_GRID_WIDTH/scaleRatio;
+                            winHeight = GRPX_PLANE_GRID_HEIGHT/scaleRatio;
+                        }
+
+                        if((gridErase ==  TRUE) && (gScd_ctrl.gridPresent == TRUE))
+                        {
+                            Scd_windowGrid(gridEraseNumWind, gridEraseWinId, FALSE, numHorzBlks);        /* undraw grid acc to previous no of windows */
+
+                            winStartX    = winWidth * (gridEraseWinId % scaleRatio);
+                            winStartY    = winHeight * (gridEraseWinId / scaleRatio);
+
+                            for(blkIdx = 0; blkIdx < numBlksInFrame; blkIdx++)
+                            {
+                              if(blkTag[blkIdx] == 1 )                /* in case of channel switch,all previously drawn boxes are erased */
+                              {
+                                  OSA_printf(" [SCD MOTION TRACK]: Box clean up when Tracking channel changes \n");
+                                    width       = ((DEMO_SCD_MOTION_TRACK_GRPX_WIDTH/scaleRatio)/numHorzBlks) - 3;//  Margin to avoid Grid overlap,116 - 2 - 2;
+                                    height      = ((DEMO_SCD_MOTION_TRACK_GRPX_HEIGHT/scaleRatio)/numVerBlks) - 4;// Margin to avoid Grid overlap, 30 - 2 - 2;
+                                    startX      = winStartX + ((((blkIdx%numHorzBlks) * boxHorOffset))/scaleRatio) + 1;
+                                    startY      = winStartY + ((((blkIdx/numHorzBlks) * boxVerOffset))/scaleRatio) + 1;
+                                  grpx_draw_box_exit(width,height,startX, startY);
+                                  blkTag[blkIdx] = 0;
+                              }
+                            }
+                            OSA_printf(" [SCD MOTION TRACK]: Grid Erase Finished \n");
+                            gScd_ctrl.drawGrid    = TRUE;
+                            gScd_ctrl.gridPresent =  FALSE;
+                        }
+
+                        if((chTag[trackChId] != 1) && (gScd_ctrl.drawGrid))                      /*if channel to be tracked does not lie on the current mosaic,*/
+                        {
+                          gScd_ctrl.drawGrid = FALSE;
+                          OSA_printf(" [SCD MOTION TRACK]: Disabling Grid Draw as Channel is not Presnt in the Current layout \n");
+                        }
+                        if((gScd_ctrl.gridPresent == FALSE) && (gScd_ctrl.drawGrid) && (scdResultBuffChanId == trackChId))
+                        {
+                            OSA_printf(" [SCD MOTION TRACK]: Fresh Grid Drawing \n");
+                            Scd_windowGrid(gScd_ctrl.numberOfWindows, winIdx, TRUE, numHorzBlks);
+                            gScd_ctrl.drawGrid    =  FALSE;
+                            gScd_ctrl.gridPresent =  TRUE;
+                        }
+                     }
+                     else
+                     {
+                       int  prevScaleRatio;
+
+                       if((gScd_ctrl.drawGrid  ==  FALSE) && (gScd_ctrl.gridPresent == TRUE))
+                       {
+                           OSA_printf(" [SCD MOTION TRACK]: Grid clean up when Motion Tracking is disabled \n");
+                           Scd_windowGrid(gScd_ctrl.prevNumberOfWindows, gScd_ctrl.prevWinIdTrack, FALSE, numHorzBlks);
+                           prevScaleRatio=sqrt(gScd_ctrl.prevNumberOfWindows);
+                                                             /* CLEAN-UP( erase grid drawn acc to previous layout) */
+                           winWidth  = GRPX_PLANE_GRID_WIDTH/prevScaleRatio;
+                           winHeight = GRPX_PLANE_GRID_HEIGHT/prevScaleRatio;
+
+                           winStartX    = winWidth * (gScd_ctrl.prevWinIdTrack % prevScaleRatio);
+                           winStartY    = winHeight * (gScd_ctrl.prevWinIdTrack / prevScaleRatio);
+
+                           for(blkIdx = 0; blkIdx < numBlksInFrame; blkIdx++)
+                           {
+                               if(blkTag[blkIdx] == 1 )                    /* in case of channel/layout switch,all previously drawn boxes are erased */
+                               {
+                                  OSA_printf(" [SCD MOTION TRACK]: Box clean up when Motion Tracking is disabled \n");
+                                  width       = ((DEMO_SCD_MOTION_TRACK_GRPX_WIDTH/scaleRatio)/numHorzBlks) - 3;//  Margin to avoid Grid overlap,116 - 2 - 2;
+                                  height      = ((DEMO_SCD_MOTION_TRACK_GRPX_HEIGHT/scaleRatio)/numVerBlks) - 4;// Margin to avoid Grid overlap, 30 - 2 - 2;
+                                  startX      = winStartX + ((((blkIdx%numHorzBlks) * boxHorOffset))/scaleRatio) + 1;
+                                  startY      = winStartY + ((((blkIdx/numHorzBlks) * boxVerOffset))/scaleRatio) + 1;
+                                  grpx_draw_box_exit(width,height,startX, startY);
+                                  blkTag[blkIdx] = 0;
+                               }
+                           }
+                       }
+                       gScd_ctrl.drawGrid    = TRUE;
+                       gScd_ctrl.gridPresent =  FALSE;
+                     }
+
+                     scaleRatio =  sqrt(gScd_ctrl.numberOfWindows);
+                     winWidth  = GRPX_PLANE_GRID_WIDTH/scaleRatio;
+                     winHeight = GRPX_PLANE_GRID_HEIGHT/scaleRatio;
+
+                     scaleRatio =  sqrt(gScd_ctrl.numberOfWindows);
+                     winStartX    = winWidth * (winIdx % scaleRatio);
+                     winStartY    = winHeight * (winIdx / scaleRatio);
+#endif
+
+                    /* Logic  to see how many blocks of total enabled blocks experienced change.
+                     * For each block, algorithm returns no. of pixels changed in the current
+                     * frame. This is compared against thresold determined using SCD sensitivity .
+                     * if changed pixels are more than the calculated thresold, block is marked as changed
+                     * i.e. motion is detected in the block.
+                     * Minimum value of thresold is 20% and then it is incrmented by 10% for
+                     * each sensitivity level change. Thresold can vary from 20% - 100%
+                     * At max sensitivity, thresold would be 20%. That means if 20% pixels
+                     * are changed block is marked as changed.
+                     * At minimu sensitivity, thresold would be 100%. That means if 100% pixels
+                     * are changed block is marked as changed */
+                     for(blkIdx = 0; blkIdx < numBlksInFrame; blkIdx++)
+                     {
+                        AlgLink_ScdblkChngConfig * blockConfig;
+
+                        blockConfig = &pChResult->blkConfig[blkIdx];
+                                                                                                       
+                        if(blockConfig->monitored == 1)
+                        {
+                            UInt32 threshold;
+
+                            monitoredBlk++;
+                            threshold = DEMO_SCD_MOTION_DETECTION_SENSITIVITY(ALG_LINK_SCD_BLK_WIDTH, blkHeight) +
+                                              (DEMO_SCD_MOTION_DETECTION_SENSITIVITY_STEP * (ALG_LINK_SCD_SENSITIVITY_MAX - blockConfig->sensitivity));
+
+                            if(pChResult->blkResult[blkIdx].numPixelsChanged > threshold)
+                            {
+                                numBlkChg++;
+#if USE_FBDEV
+
+                                if((gScd_ctrl.enableMotionTracking) && gScd_ctrl.gridPresent && (scdResultBuffChanId == trackChId))
+                                {
+                                    width       = ((DEMO_SCD_MOTION_TRACK_GRPX_WIDTH/scaleRatio)/numHorzBlks) - 3;//  Margin to avoid Grid overlap,116 - 2 - 2;
+                                    height      = ((DEMO_SCD_MOTION_TRACK_GRPX_HEIGHT/scaleRatio)/numVerBlks) - 4;// Margin to avoid Grid overlap, 30 - 2 - 2;
+                                    startX      = winStartX + ((((blkIdx%numHorzBlks) * boxHorOffset))/scaleRatio) + 1;
+                                    startY      = winStartY + ((((blkIdx/numHorzBlks) * boxVerOffset))/scaleRatio) + 1;
+                                    if(blkTag[blkIdx] == 0)
+                                    {
+                                      grpx_draw_box(width, height, startX, startY);
+                                    }
+                                    blkTag[blkIdx] = 1;
+                                 }
+#endif
+                            }
+#if USE_FBDEV
+                            else
+                            {
+                                if((gScd_ctrl.enableMotionTracking) && gScd_ctrl.gridPresent && (scdResultBuffChanId==trackChId))
+                                {
+
+                                   if(blkTag[blkIdx] == 1 )
+                                   {
+                                     width       = ((DEMO_SCD_MOTION_TRACK_GRPX_WIDTH/scaleRatio)/numHorzBlks) - 3;//  Margin to avoid Grid overlap,116 - 2 - 2;
+                                     height      = ((DEMO_SCD_MOTION_TRACK_GRPX_HEIGHT/scaleRatio)/numVerBlks) - 4;// Margin to avoid Grid overlap, 30 - 2 - 2;
+                                     startX      = winStartX + ((((blkIdx%numHorzBlks) * boxHorOffset))/scaleRatio) + 1;
+                                     startY      = winStartY + ((((blkIdx/numHorzBlks) * boxVerOffset))/scaleRatio) + 1;
+                                     grpx_draw_box_exit(width,height,startX, startY);
+                                     blkTag[blkIdx] = 0;
+                                   }
+
+                                }
+                            }
+#endif
+                        }
+                    }
+#if USE_FBDEV
+
+                    gScd_ctrl.prevWinIdTrack      = winIdx;              // update prevWinIdTrack
+#endif
+                    gScd_ctrl.prevNumberOfWindows = gScd_ctrl.numberOfWindows;        // update prevWindows
+
+                    if((monitoredBlk > 0) && (numBlkChg > 0))
+                    {
+                        int newChNum = scdResultBuffChanId;
+
+                        if(newChNum >= Vcap_getNumChannels())
+                        {
+                            newChNum -=   Vcap_getNumChannels();
+                        }
+                        OSA_printf(" [MOTION DETECTED] %d: SCD CH <%d> CAP CH = %d \n",
+                                 OSA_getCurTimeInMsec(), pChResult->chId, newChNum);
+                    }
+                }
+#endif
+            }
+
+             Scd_releaseAlgResultBuffer(&bitsBuf);
+        }
     }
 
     gScd_ctrl.isWrThrStopDone = TRUE;
@@ -286,21 +607,27 @@ Int32 Scd_bitsWriteCreate(UInt32 demoId,UInt32  ipcBitsInHostId)
     UInt32 winIdx;
 
     gScd_ctrl.chIdTrack            = 0;
-    /* As default layout is 4x4 widnows */
-    gScd_ctrl.numberOfWindows      = SCD_MAX_CHANNELS;
+    /* As default layout is 1x1 widnows */
+    gScd_ctrl.numberOfWindows      = 1;//SCD_MAX_CHANNELS;
     gScd_ctrl.drawGrid             = FALSE;
     gScd_ctrl.enableMotionTracking = FALSE;
 	gScd_ctrl.ipcBitsInHLOSId = ipcBitsInHostId;//added by guo .
 
-#if 1
+
+
+
     /* Making chanOffset zero as in Ne-Prog, SCD channels start from Chan-0 */
     if(demoId == 0)
     {
        OSA_printf("\n Enable SCD block Motion Tracking On Display (Only On ON-CHIP HDMI)\n\n");
-       gScd_ctrl.enableMotionTracking = FALSE;//motionTracking Enable or not
+       gScd_ctrl.enableMotionTracking =FALSE;//motionTracking Enable or not
 
     }
 
+#if 1  //[guo] for test
+	gScd_ctrl.enableMotionTracking = TRUE;
+   	 gScd_ctrl.drawGrid  = TRUE;
+#endif
      if(gScd_ctrl.enableMotionTracking)
      {
         UInt32 chId;
@@ -312,10 +639,10 @@ Int32 Scd_bitsWriteCreate(UInt32 demoId,UInt32  ipcBitsInHostId)
         gScd_ctrl.chIdTrack = chId;
         gScd_ctrl.drawGrid  = TRUE;
 
-        /* As default layout is 4x4 widnows */
-        gScd_ctrl.numberOfWindows = 16;
+        /* As default layout is 4x4 widnows ,but guo's is 1*/
+        gScd_ctrl.numberOfWindows = 1;
      }
-#endif
+
 
 
 #if 0
