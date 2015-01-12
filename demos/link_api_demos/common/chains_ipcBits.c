@@ -188,7 +188,10 @@ typedef struct Chains_IpcBitsCtrlThrObj {
     volatile Bool exitBitsOutThread;
 } Chains_IpcBitsCtrlThrObj;
 
-//added by guo for RTSP
+/*****added by guo for 2 ch RTSP:using 2 threads
+
+
+***************************************/
 typedef struct Chains_myRtspSvrThrObj{
 	OSA_ThrHndl thrHandleRtspCh1;
 	OSA_ThrHndl thrHandleRtspCh2;
@@ -205,7 +208,7 @@ void RtspServer1Main(void *pPrm)
 	while(!gRtspThrObj.exitRtspCh1)
 	{
 		int status = OSA_semWait(&gRtspThrObj.Sem[ch], OSA_TIMEOUT_FOREVER);
-		printf("  !!!!!!!![guo]Rstp1.....\n");
+		//printf("  !!!!!!!![guo]Rstp1.....\n");
 		shared_stuff = (shared_use *)Videoptr[ch];
 		
 		if (!semaphore_p(semEmpty[ch]))     //P() -1
@@ -229,7 +232,7 @@ void RtspServer2Main(void *pPrm)
 	while(!gRtspThrObj.exitRtspCh2)
 	{
 		int status = OSA_semWait(&gRtspThrObj.Sem[ch], OSA_TIMEOUT_FOREVER);
-		printf("  !!!!!!!![guo]Rstp2.....\n");
+		//printf("  !!!!!!!![guo]Rstp2.....\n");
 		shared_stuff = (shared_use *)Videoptr[ch];
 		if (!semaphore_p(semEmpty[ch]))     //P() -1
 	  	{
@@ -258,6 +261,7 @@ static void Guo_doRtspServerThrInit()
 	
 	int status = OSA_semCreate(&gRtspThrObj.Sem[0], 1, 0);
 	status = OSA_semCreate(&gRtspThrObj.Sem[1], 1, 0);
+	
 	status = OSA_thrCreate(
         &gRtspThrObj.thrHandleRtspCh1,
         RtspServer1Main,

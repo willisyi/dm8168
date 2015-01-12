@@ -194,7 +194,7 @@ Void Chains_doubleChCapScEncSend(Chains_Ctrl *chainsCfg)
 	CHAINS_INIT_STRUCT(AlgLink_CreateParams,scdPrm);
 
 
-	Scd_bitsWriteCreate(0,ipcBitsInHostId2);	//Init scd's ipcBitsInHost by:guo8113
+//	Scd_bitsWriteCreate(0,ipcBitsInHostId2);	//Init scd's ipcBitsInHost by:guo8113,this is ok, temporarily disabled!
 	
 //----------------end scd-----------------------------
     Chains_ipcBitsInit();		
@@ -677,12 +677,25 @@ Void Chains_doubleChCapScEncSend(Chains_Ctrl *chainsCfg)
             System_linkStart(ipcFramesInDspId);
             System_linkStart(ipcFramesOutVpssId);		
         }
-//----------------------------------
+	
         System_linkStart(mergeId);
         System_linkStart(captureId);
  	//grpx_fb_draw_demo();
 
 
+	Chains_ipcBitsLocSt();	//start RTP (or Local Storage)
+
+	while(1)//RUN SYSTEM SERVER
+	{
+		//Chains_ScdPrint(scdId);//This is only for temp test!!!
+		sleep(2);
+		Chains_swMsSwitchLayout(&swMsId, &swMsPrm, TRUE, FALSE, 2);
+		Chains_ScdPrint(scdId);//This is only for temp test!!!
+		sleep(1);
+		Chains_swMsSwitchLayout(&swMsId, &swMsPrm, FALSE, TRUE, 2);
+	}
+//This is for user input args ,when runs system server this is not supported
+#if 0
         while(1)
         {
             printf("My menu:Input L to storage the video and E to stop\n"
@@ -758,6 +771,7 @@ Void Chains_doubleChCapScEncSend(Chains_Ctrl *chainsCfg)
             }
 		Chains_ScdPrint(scdId);//This is only for temp test!!!
         }
+#endif
 
         System_linkStop(captureId);
         System_linkStop(mergeId);
