@@ -36,6 +36,7 @@ void Chains_ScdPrint(UInt32 scdId)
 	}
 		
 }
+
 void Chains_OSDConfig(AlgLink_CreateParams *DSPLinkPrm)
 {
    Ptr osdWinSrAddr[ALG_LINK_OSD_MAX_CH][CHAINS_OSD_NUM_WINDOWS];
@@ -681,10 +682,7 @@ Void Chains_doubleChCapScEncSend(Chains_Ctrl *chainsCfg)
         System_linkStart(mergeId);
         System_linkStart(captureId);
  	//grpx_fb_draw_demo();
-
-
-	Chains_ipcBitsLocSt();	//start RTP (or Local Storage)
-
+	Chains_ipcBitsLocSt();	//start RTP (or Local Storage)	
 	while(1)//RUN SYSTEM SERVER
 	{
 		//Chains_ScdPrint(scdId);//This is only for temp test!!!
@@ -693,7 +691,7 @@ Void Chains_doubleChCapScEncSend(Chains_Ctrl *chainsCfg)
 		Chains_ScdPrint(scdId);//This is only for temp test!!!
 		sleep(1);
 		Chains_swMsSwitchLayout(&swMsId, &swMsPrm, FALSE, TRUE, 2);
-	}
+	}	
 //This is for user input args ,when runs system server this is not supported
 #if 0
         while(1)

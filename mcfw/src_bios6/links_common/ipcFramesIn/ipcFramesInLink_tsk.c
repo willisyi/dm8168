@@ -716,7 +716,7 @@ Int32 IpcFramesInLink_init()
                                  IPC_LINK_TSK_PRI,
                                  gIpcFramesInLink_tskStack[ipcFramesInId],
                                  IPC_LINK_TSK_STACK_SIZE, pObj, tskName);
-        UTILS_assert(status == FVID2_SOK);
+        UTILS_assert(status == FVID2_SOK);	
     }
 
     return status;

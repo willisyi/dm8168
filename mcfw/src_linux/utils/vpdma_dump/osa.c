@@ -11,7 +11,6 @@
 #include <stdlib.h>
 #include <sys/mman.h>
 
-
 Uint32 OSA_getCurTimeInMsec(void)
 {
   static int isInit = FALSE;

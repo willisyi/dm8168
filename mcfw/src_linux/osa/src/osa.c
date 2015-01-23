@@ -24,7 +24,26 @@ int OSA_attachSignalHandler(int sigId, void (*handler)(int ) )
   
   return OSA_SOK;
 }
+Uint32 OSA_getCurTimeInUsec()//guo
+{
+   static int isInit2 = FALSE;
+  static Uint32 initTime2=0;
+  struct timeval tv;
 
+  if(isInit2==FALSE)
+  {
+      isInit2 = TRUE;
+
+      if (gettimeofday(&tv, NULL) < 0)
+        return 0;
+
+      initTime2 = (Uint32)(tv.tv_sec * 1000000u + tv.tv_usec);
+  }
+  if (gettimeofday(&tv, NULL) < 0)
+    return 0;
+
+  return (Uint32)(tv.tv_sec * 1000000u + tv.tv_usec)-initTime2;
+}
 Uint32 OSA_getCurTimeInMsec()
 {
   static int isInit = FALSE;

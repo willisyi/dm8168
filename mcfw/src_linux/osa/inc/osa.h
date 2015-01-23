@@ -76,7 +76,7 @@ typedef   void *  OSA_PTR;
 
 #define OSA_ISERROR(status)               ((status < 0) ? TRUE : FALSE)
 #include <osa_debug.h>
-
+Uint32 OSA_getCurTimeInUsec(void);
 Uint32 OSA_getCurTimeInMsec();
 void   OSA_waitMsecs(Uint32 msecs);
 int    OSA_attachSignalHandler(int sigId, void (*handler)(int ) );

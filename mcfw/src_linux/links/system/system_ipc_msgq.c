@@ -381,8 +381,11 @@ Int32 System_ipcMsgQSendMsg(UInt32 linkId, UInt32 cmd, Void *pPrm, UInt32 prmSiz
 
     MessageQ_setReplyQueue(gSystem_ipcObj.selfAckMsgQ, (MessageQ_Msg)pMsgCommon);
     MessageQ_setMsgId(pMsgCommon, linkId);
-
+	printf("!!!%u: MSGQ:[%s] MsgQ put for [%s] calling\n",
+		OSA_getCurTimeInUsec(),MultiProc_getName(MultiProc_self()),MultiProc_getName(procId));
     status = MessageQ_put(gSystem_ipcObj.remoteProcMsgQ[procId], (MessageQ_Msg)pMsgCommon);
+	printf("!!!%u: MSGQ:[%s] MsgQ put for [%s] called\n",
+		OSA_getCurTimeInUsec(),MultiProc_getName(MultiProc_self()),MultiProc_getName(procId));
     if(status!=MessageQ_S_SUCCESS)
     {
         printf(" %u: MSGQ: MsgQ put for [%s] failed !!!\n",
@@ -405,7 +408,11 @@ Int32 System_ipcMsgQSendMsg(UInt32 linkId, UInt32 cmd, Void *pPrm, UInt32 prmSiz
         }
 
         do {
+		printf("!!!%u: MSGQ:[%s] MsgQ get from [%s] calling\n",
+		OSA_getCurTimeInUsec(),MultiProc_getName(MultiProc_self()),MultiProc_getName(procId));	
             status = MessageQ_get(gSystem_ipcObj.selfAckMsgQ, (MessageQ_Msg*)&pAckMsg, timeout);
+		printf("!!!%u: MSGQ:[%s] MsgQ get from [%s] called\n",
+		OSA_getCurTimeInUsec(),MultiProc_getName(MultiProc_self()),MultiProc_getName(procId));	
             if(status==MessageQ_E_TIMEOUT)
             {
                 /* if timeout then break out of retry loop */

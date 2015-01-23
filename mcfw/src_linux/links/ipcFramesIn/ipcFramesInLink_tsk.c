@@ -840,7 +840,12 @@ Int IpcFramesInLink_tskMain(struct OSA_TskHndl * pTsk, OSA_MsgHndl * pMsg,
 
     return IPC_FRAMES_IN_LINK_S_SUCCESS;
 }
-
+//[guo]
+Void myNotifyCb(OSA_TskHndl *pTsk)
+{
+	printf("!!![%u]Notify Callback run!\n",OSA_getCurTimeInUsec());
+	 // OSA_SNPRINTF(tskName, "IPC_FRAMES_IN%d", ipcFramesInId);
+}
 Int32 IpcFramesInLink_init()
 {
     Int32 status;
@@ -872,16 +877,32 @@ Int32 IpcFramesInLink_init()
         System_registerLink(pObj->tskId, &linkObj);
 
         OSA_SNPRINTF(tskName, "IPC_FRAMES_IN%d", ipcFramesInId);
+//[guo_t]
+		int HostNull1Id=HOST_LINK(SYSTEM_LINK_ID_NULL_1);
+		System_ipcRegisterNotifyCb(HostNull1Id, myNotifyCb);
+		  status = Notify_registerEvent(procId,
+                                          SYSTEM_IPC_NOTIFY_LINE_ID,
+                                          SYSTEM_IPC_NOTIFY_EVENT_ID,
+                                          myNotifyCb, NULL);
+		OSA_assert(status == Notify_S_SUCCESS);
 
+		int ii=10;
+		while(ii--){
+		printf("!!![%u]Send notify to[%s][%d]\n",OSA_getCurTimeInUsec(),
+			MultiProc_getName(SYSTEM_GET_PROC_ID(HostNull1Id)),SYSTEM_GET_LINK_ID(HostNull1Id));
+		System_ipcSendNotify(HostNull1Id);//guo
+		}
+	 	//OSA_assert(0);//guo
+	 	
+//[guo_t]
         System_ipcRegisterNotifyCb(pObj->tskId, IpcFramesInLink_notifyCb);
-
         status = OSA_tskCreate(&pObj->tsk,
                                IpcFramesInLink_tskMain,
                                IPC_LINK_TSK_PRI,
                                IPC_LINK_TSK_STACK_SIZE, 0, pObj);
         OSA_assert(status == OSA_SOK);
     }
-
+		
     return status;
 }
 
