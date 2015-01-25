@@ -177,6 +177,9 @@ chWinPrm->colorKey[2] = 0x0;
             chBlindWinPrm->winPrm[winId].height        = DEMO_OSD_WIN_HEIGHT;
             chBlindWinPrm->winPrm[winId].fillColorYUYV = 0x80008000;
             chBlindWinPrm->winPrm[winId].enableWin     = DEMO_OSD_ENABLE_WIN;
+	//disable 1st win
+	//	if(winId == 0)
+	//		chBlindWinPrm->winPrm[winId].enableWin     = 0;	
 
 
             // winId == 3 is channel name window
@@ -191,6 +194,11 @@ chWinPrm->colorKey[2] = 0x0;
             }
             else
             {
+            	///guo:added to modify the NameWindow's parm according to ARGS
+            	chWinPrm->winPrm[winId].startX = gChains_ctrl.channelConf[0].OSDStartX;
+		chWinPrm->winPrm[winId].startY = gChains_ctrl.channelConf[0].OSDStartY;
+		chWinPrm->winPrm[winId].enableWin = gChains_ctrl.channelConf[0].enableOsd;
+		/////
                 bufOffset = osdBufSize * chId;
                 chWinPrm->winPrm[winId].addr[0][0] = (bufInfoChnlName.physAddr + bufOffset);
                 curVirtAddr = bufInfoChnlName.virtAddr + bufOffset;
@@ -226,13 +234,14 @@ chWinPrm->colorKey[2] = 0x0;
                
  //#define MY
 #ifdef MY   
-		sprintf(NameExample[chId],"高清1080P60第%d路",chId) ;
+		sprintf(NameExample[chId],"高清1080P60第%d路",chId+1) ;
+		//sprintf(NameExample[chId],"OSD功能测试") ;
 		//strcpy(NameExample[chId],"高清1080P60第");
 		int length;     
 		unsigned changdu,mianji;
 		unsigned char *allYuvbuf;
 		allYuvbuf=(unsigned char*)malloc(sizeof(char)*32*32*32*2*16);
-		int fontSize =32;
+		int fontSize =gChains_ctrl.channelConf[chId].OSDfont;//guo read channel config
 		length = FontGetAllYUYVData(allYuvbuf, NameExample[chId], fontSize,&changdu,&mianji);
 	      	Bitmap_Info cn_422i = {
     		SYSTEM_DF_YUV422I_YUYV,

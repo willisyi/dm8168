@@ -336,7 +336,7 @@ Void Chains_doubleChCapScEncSend(Chains_Ctrl *chainsCfg)
 		       DSPLinkPrm.osdChCreateParams[i].maxWidth = CHAINS_OSD_WIN_MAX_WIDTH;
        			DSPLinkPrm.osdChCreateParams[i].maxHeight = CHAINS_OSD_WIN_MAX_HEIGHT;
 			memcpy(&(DSPLinkPrm.osdChCreateParams[i].chDefaultParams),
-				&g_osdChParam[i],sizeof(AlgLink_OsdChWinParams));
+				&g_osdChParam[i],sizeof(AlgLink_OsdChWinParams));//(dst,src,size)
        	}
  #endif
     }
