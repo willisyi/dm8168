@@ -194,7 +194,7 @@ Void Chains_doubleChCapScEncSend(Chains_Ctrl *chainsCfg)
 	CHAINS_INIT_STRUCT(AlgLink_CreateParams,scdPrm);
 
 
-//	Scd_bitsWriteCreate(0,ipcBitsInHostId2);	//Init scd's ipcBitsInHost by:guo8113,this is ok, temporarily disabled!
+	Scd_bitsWriteCreate(0,ipcBitsInHostId2);	//Init scd's ipcBitsInHost by:guo8113,this is ok, temporarily disabled!
 	
 //----------------end scd-----------------------------
     Chains_ipcBitsInit();		
@@ -463,8 +463,8 @@ Void Chains_doubleChCapScEncSend(Chains_Ctrl *chainsCfg)
            {
              for(x = 0; x < numHorzBlks; x++)
              {
-               chPrm->blkConfig[i].sensitivity = ALG_LINK_SCD_SENSITIVITY_LOW;
-               chPrm->blkConfig[i].monitored     = 0;
+               chPrm->blkConfig[i].sensitivity = ALG_LINK_SCD_SENSITIVITY_MID;
+               chPrm->blkConfig[i].monitored     = 1;
                i++;
              }
            }
@@ -684,7 +684,7 @@ Void Chains_doubleChCapScEncSend(Chains_Ctrl *chainsCfg)
 
 
 	Chains_ipcBitsLocSt();	//start RTP (or Local Storage)
-
+#ifdef SYS_SERVER
 	while(1)//RUN SYSTEM SERVER
 	{
 		//Chains_ScdPrint(scdId);//This is only for temp test!!!
@@ -695,7 +695,7 @@ Void Chains_doubleChCapScEncSend(Chains_Ctrl *chainsCfg)
 		Chains_swMsSwitchLayout(&swMsId, &swMsPrm, FALSE, TRUE, 2);
 	}
 //This is for user input args ,when runs system server this is not supported
-#if 0
+#else
         while(1)
         {
             printf("My menu:Input L to storage the video and E to stop\n"
@@ -709,33 +709,31 @@ Void Chains_doubleChCapScEncSend(Chains_Ctrl *chainsCfg)
                 System_linkControl(captureId, CAPTURE_LINK_CMD_FORCE_RESET, NULL, 0, TRUE);
             if(ch=='p')
             {
-                System_linkControl(captureId, CAPTURE_LINK_CMD_PRINT_ADV_STATISTICS, NULL, 0, TRUE);
-		  System_linkControl(captureId,SYSTEM_COMMON_CMD_PRINT_STATUS,NULL,0,FALSE);
-		  System_linkControl(encId,SYSTEM_COMMON_CMD_PRINT_STATUS,NULL,0,FALSE);
-		  System_linkControl(osdId,SYSTEM_COMMON_CMD_PRINT_STATUS,NULL,0,FALSE);
+ 				MultiCh_prfLoadPrint(TRUE,TRUE);
             }
-	   if(ch=='P')
-	   {
-	   	Vsys_printDetailedStatistics();
-		continue;
-	   }
-	   if(ch == 'd')//draw
-	   	{
+	   		if(ch=='P')
+	   		{
+	   			//Vsys_printDetailedStatistics();
+				continue;
+	   		}
+	   		if(ch == 'd')//draw
+	   		{
 	   		 grpx_draw_box(500,500,500,500);//在HDMI2上画了出来
 	   		 grpx_fb_draw_grid(300,300,200,100,11);
 	   		 continue;
-	   	}
-	   if(ch == 'x')
-	   	{
-	   	grpx_draw_box_exit(500,500,500,500);
-		grpx_fb_draw_grid_exit(300,300,200,100,11);
-	 	grpx_exit();
-		continue;
-	   	}
+			
+	   		}
+	   		if(ch == 'x')
+	   		{
+	   		grpx_draw_box_exit(500,500,500,500);
+			grpx_fb_draw_grid_exit(300,300,200,100,11);
+	 		grpx_exit();
+			continue;
+	   		}
 
           {
-            	 Bool switchCh = FALSE;
-            	 Bool switchLayout = FALSE;
+         Bool switchCh = FALSE;
+         Bool switchLayout = FALSE;
 		if(ch=='L')
 		{
 			Chains_ipcBitsLocSt();
@@ -750,8 +748,10 @@ Void Chains_doubleChCapScEncSend(Chains_Ctrl *chainsCfg)
             	 {
             		 switchLayout = TRUE;
             		 Chains_swMsSwitchLayout(&swMsId, &swMsPrm, switchLayout, switchCh, 2);
+					 gScd_ctrl.enableMotionTracking = 0;
+					 gScd_ctrl.exitWrThr = 1;
             		printf("switch layout\n");
-			continue;
+					continue;
 
             	 }
 

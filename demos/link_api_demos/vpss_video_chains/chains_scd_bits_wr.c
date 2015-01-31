@@ -261,7 +261,7 @@ void *Scd_bitsWriteMain(void *pPrm)
        blkTag[blkIdx] = 0;
     }
 
-    for(chIdx = 0; chIdx < 4; chIdx++)
+    for(chIdx = 0; chIdx < 1; chIdx++)
     {
        chTag[chIdx] = 1;               /* initially all channels are being displayed as default layout is 4*4 */
     }
@@ -281,7 +281,8 @@ void *Scd_bitsWriteMain(void *pPrm)
             for(frameId=0; frameId<bitsBuf.numBufs; frameId++)
             {
                 pBuf = &bitsBuf.bitsBuf[frameId];
-                if(pBuf->chnId<VENC_CHN_MAX)
+
+                if(pBuf->chnId<VENC_CHN_MAX)//only process 1ch presently
                 {
                     pChInfo = &gScd_ctrl.chInfo[pBuf->chnId];
 
@@ -326,7 +327,8 @@ void *Scd_bitsWriteMain(void *pPrm)
 
                         /* Not adding Offset  as in Ne-Prog, SCD channels start from Chan-0 */
                         scdResultBuffChanId = pChResult->chId;
-                  
+                  	if(scdResultBuffChanId!=0)
+					continue;
                     monitoredBlk = 0;
                     numBlkChg    = 0;
 
@@ -369,7 +371,7 @@ void *Scd_bitsWriteMain(void *pPrm)
                     }
 
 
-                    boxHorOffset = DEMO_SCD_MOTION_TRACK_GRPX_WIDTH/numHorzBlks;// DEMO_SCD_MOTION_TRACK_BOX_WIDTH_CIF;
+                    boxHorOffset = 1920/numHorzBlks;// DEMO_SCD_MOTION_TRACK_BOX_WIDTH_CIF;
                     if(pBuf->frameWidth == 352)
                     {
                          boxVerOffset       = DEMO_SCD_MOTION_TRACK_BOX_HEIGHT_CIF;
@@ -435,8 +437,8 @@ void *Scd_bitsWriteMain(void *pPrm)
                               if(blkTag[blkIdx] == 1 )                /* in case of channel switch,all previously drawn boxes are erased */
                               {
                                   OSA_printf(" [SCD MOTION TRACK]: Box clean up when Tracking channel changes \n");
-                                    width       = ((DEMO_SCD_MOTION_TRACK_GRPX_WIDTH/scaleRatio)/numHorzBlks) - 3;//  Margin to avoid Grid overlap,116 - 2 - 2;
-                                    height      = ((DEMO_SCD_MOTION_TRACK_GRPX_HEIGHT/scaleRatio)/numVerBlks) - 4;// Margin to avoid Grid overlap, 30 - 2 - 2;
+                                    width       = ((1920/scaleRatio)/numHorzBlks) - 3;//  Margin to avoid Grid overlap,116 - 2 - 2;
+                                    height      = ((1080/scaleRatio)/numVerBlks) - 4;// Margin to avoid Grid overlap, 30 - 2 - 2;
                                     startX      = winStartX + ((((blkIdx%numHorzBlks) * boxHorOffset))/scaleRatio) + 1;
                                     startY      = winStartY + ((((blkIdx/numHorzBlks) * boxVerOffset))/scaleRatio) + 1;
                                   grpx_draw_box_exit(width,height,startX, startY);
@@ -456,7 +458,7 @@ void *Scd_bitsWriteMain(void *pPrm)
                         if((gScd_ctrl.gridPresent == FALSE) && (gScd_ctrl.drawGrid) && (scdResultBuffChanId == trackChId))
                         {
                             OSA_printf(" [SCD MOTION TRACK]: Fresh Grid Drawing \n");
-                            Scd_windowGrid(gScd_ctrl.numberOfWindows, winIdx, TRUE, numHorzBlks);
+                          //  Scd_windowGrid(gScd_ctrl.numberOfWindows, winIdx, TRUE, numHorzBlks);
                             gScd_ctrl.drawGrid    =  FALSE;
                             gScd_ctrl.gridPresent =  TRUE;
                         }
@@ -482,8 +484,8 @@ void *Scd_bitsWriteMain(void *pPrm)
                                if(blkTag[blkIdx] == 1 )                    /* in case of channel/layout switch,all previously drawn boxes are erased */
                                {
                                   OSA_printf(" [SCD MOTION TRACK]: Box clean up when Motion Tracking is disabled \n");
-                                  width       = ((DEMO_SCD_MOTION_TRACK_GRPX_WIDTH/scaleRatio)/numHorzBlks) - 3;//  Margin to avoid Grid overlap,116 - 2 - 2;
-                                  height      = ((DEMO_SCD_MOTION_TRACK_GRPX_HEIGHT/scaleRatio)/numVerBlks) - 4;// Margin to avoid Grid overlap, 30 - 2 - 2;
+                                  width       = ((1920/scaleRatio)/numHorzBlks) - 3;//  Margin to avoid Grid overlap,116 - 2 - 2;
+                                  height      = ((1080/scaleRatio)/numVerBlks) - 4;// Margin to avoid Grid overlap, 30 - 2 - 2;
                                   startX      = winStartX + ((((blkIdx%numHorzBlks) * boxHorOffset))/scaleRatio) + 1;
                                   startY      = winStartY + ((((blkIdx/numHorzBlks) * boxVerOffset))/scaleRatio) + 1;
                                   grpx_draw_box_exit(width,height,startX, startY);
@@ -536,8 +538,8 @@ void *Scd_bitsWriteMain(void *pPrm)
 
                                 if((gScd_ctrl.enableMotionTracking) && gScd_ctrl.gridPresent && (scdResultBuffChanId == trackChId))
                                 {
-                                    width       = ((DEMO_SCD_MOTION_TRACK_GRPX_WIDTH/scaleRatio)/numHorzBlks) - 3;//  Margin to avoid Grid overlap,116 - 2 - 2;
-                                    height      = ((DEMO_SCD_MOTION_TRACK_GRPX_HEIGHT/scaleRatio)/numVerBlks) - 4;// Margin to avoid Grid overlap, 30 - 2 - 2;
+                                    width       = ((1920/scaleRatio)/numHorzBlks) - 3;//  Margin to avoid Grid overlap,116 - 2 - 2;
+                                    height      = ((1080/scaleRatio)/numVerBlks) - 4;// Margin to avoid Grid overlap, 30 - 2 - 2;
                                     startX      = winStartX + ((((blkIdx%numHorzBlks) * boxHorOffset))/scaleRatio) + 1;
                                     startY      = winStartY + ((((blkIdx/numHorzBlks) * boxVerOffset))/scaleRatio) + 1;
                                     if(blkTag[blkIdx] == 0)
@@ -556,8 +558,8 @@ void *Scd_bitsWriteMain(void *pPrm)
 
                                    if(blkTag[blkIdx] == 1 )
                                    {
-                                     width       = ((DEMO_SCD_MOTION_TRACK_GRPX_WIDTH/scaleRatio)/numHorzBlks) - 3;//  Margin to avoid Grid overlap,116 - 2 - 2;
-                                     height      = ((DEMO_SCD_MOTION_TRACK_GRPX_HEIGHT/scaleRatio)/numVerBlks) - 4;// Margin to avoid Grid overlap, 30 - 2 - 2;
+                                     width       = ((1920/scaleRatio)/numHorzBlks) - 3;//  Margin to avoid Grid overlap,116 - 2 - 2;
+                                     height      = ((1080/scaleRatio)/numVerBlks) - 4;// Margin to avoid Grid overlap, 30 - 2 - 2;
                                      startX      = winStartX + ((((blkIdx%numHorzBlks) * boxHorOffset))/scaleRatio) + 1;
                                      startY      = winStartY + ((((blkIdx/numHorzBlks) * boxVerOffset))/scaleRatio) + 1;
                                      grpx_draw_box_exit(width,height,startX, startY);
@@ -579,9 +581,9 @@ void *Scd_bitsWriteMain(void *pPrm)
                     {
                         int newChNum = scdResultBuffChanId;
 
-                        if(newChNum >= Vcap_getNumChannels())
+                        if(newChNum >= 1)
                         {
-                            newChNum -=   Vcap_getNumChannels();
+                            newChNum -=   1;
                         }
                         OSA_printf(" [MOTION DETECTED] %d: SCD CH <%d> CAP CH = %d \n",
                                  OSA_getCurTimeInMsec(), pChResult->chId, newChNum);

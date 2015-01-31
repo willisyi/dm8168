@@ -563,7 +563,7 @@ Void  Audio_recordMain (Void * arg)
 	}
 	
     /*xte_xyx_0313 audiopath must be valid,or file creation will be failed*/
-    strcpy(audioPath, "/mnt");
+    strcpy(audioPath, ".");//  /mnt
 
     idx = 0;
     strcpy(bkt.id, "AUD_");
@@ -582,8 +582,8 @@ Void  Audio_recordMain (Void * arg)
 	
                 idx ++;
                 fp = fopen(fname, "wb");
-		  fp_AAC = fopen("/mnt/01/aac.pcm","wb");
-		  fp_test = fopen("/mnt/01/record.pcm","wb");
+		  fp_AAC = fopen("./01/aac.pcm","wb");
+		  fp_test = fopen("./01/record.pcm","wb");
 		  
                 /*xte_xyx_0409 to check the file valid or not*/
 		  printf("the error info: %s\n", strerror(errno));

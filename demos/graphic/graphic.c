@@ -437,11 +437,18 @@ int draw_box(unsigned char *buf_addr, int flag,
                 }
                 if(grpx->planeType == GRPX_FORMAT_RGB888)
                 {
+                	if(flag)//make reg box
+                    {
+                        *p = 0;
+                        *(p + 1) = 0;
+                        *(p + 2) = 0xff;
+                    }else
                     {
                         *p = color;
                         *(p + 1) = color;
                         *(p + 2) = color;
                     }
+                    
                 }
                 if(grpx->planeType == GRPX_FORMAT_ARGB8888)
                 {
@@ -477,6 +484,12 @@ int draw_box(unsigned char *buf_addr, int flag,
                 }
                 if(grpx->planeType == GRPX_FORMAT_RGB888)
                 {
+                	if(flag)//make reg box
+                    {
+                        *p = 0;
+                        *(p + 1) = 0;
+                        *(p + 2) = 0xff;
+                    }else
                     {
                         *p = color;
                         *(p + 1) = color;
