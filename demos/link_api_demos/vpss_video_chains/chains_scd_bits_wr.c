@@ -380,7 +380,7 @@ void *Scd_bitsWriteMain(void *pPrm)
                     {
                          boxVerOffset       = DEMO_SCD_MOTION_TRACK_BOX_HEIGHT_QCIF;
                     }
-
+					boxVerOffset = 1080/numVerBlks;
                     if(gScd_ctrl.enableMotionTracking)
                     {
                         if((gScd_ctrl.gridPresent ==  TRUE) &&
