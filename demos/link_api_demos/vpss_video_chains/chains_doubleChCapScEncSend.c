@@ -10,6 +10,7 @@
 #include <mcfw/interfaces/ti_vsys.h>//for printf statistic
 #include <mcfw/interfaces/link_api/system_common.h>
 #include "chains_scd_bits_wr.h"		//for scd by guo
+#include "Msg_Def.h"				//for communication with system_server
 #include <unistd.h>
 #include <time.h>
 #include <sys/time.h>
@@ -137,6 +138,12 @@ Void Chains_doubleChCapScEncSend(Chains_Ctrl *chainsCfg)
 
     Bool enableOsdAlgLink=1;
     UInt32 enableDisplay = FALSE;
+/****************msg between sys and chain*****/
+#if 0
+	int msgqid = 0;
+	msgqid = Msg_Init(MSG_KEY);
+#endif
+/*************************************/
 ////////////////////////////OSD///////////////////////////////////
     AlgLink_CreateParams        	    DSPLinkPrm;//guo changed to global
     IpcFramesOutLinkRTOS_CreateParams  ipcFramesOutVpssPrm;
@@ -684,15 +691,117 @@ Void Chains_doubleChCapScEncSend(Chains_Ctrl *chainsCfg)
 
 
 	Chains_ipcBitsLocSt();	//start RTP (or Local Storage)
+//#define SYS_SERVER
 #ifdef SYS_SERVER
 	while(1)//RUN SYSTEM SERVER
 	{
 		//Chains_ScdPrint(scdId);//This is only for temp test!!!
-		sleep(2);
-		Chains_swMsSwitchLayout(&swMsId, &swMsPrm, TRUE, FALSE, 2);
-		Chains_ScdPrint(scdId);//This is only for temp test!!!
-		sleep(1);
-		Chains_swMsSwitchLayout(&swMsId, &swMsPrm, FALSE, TRUE, 2);
+		//sleep(2);
+		//Chains_swMsSwitchLayout(&swMsId, &swMsPrm, TRUE, FALSE, 2);
+		//Chains_ScdPrint(scdId);//This is only for temp test!!!
+		//sleep(1);
+		//Chains_swMsSwitchLayout(&swMsId, &swMsPrm, FALSE, TRUE, 2);
+		int msg_size = 0;
+		MSG_BUF msgbuf;
+
+		 msg_size = msgrcv( msgqid, &msgbuf, sizeof(msgbuf)-sizeof(long),
+			       MSG_TYPE_MSG1, 0);
+         //Something is wrong ,and print  "msgrecv failed,errno=4[Interrupted system call]"
+        	if( msg_size < 0 )
+		{
+			printf("Receive msg fail \n");
+			printf("msgrecv failed,errno=%d[%s]\n",errno,strerror(errno));
+			break;
+		}
+            else
+		{
+			switch( msgbuf.cmd )
+			{
+                                case MSG_CMD_SET_BITRATE1:
+				{
+					unsigned int value;
+					value = *(unsigned int*)(&msgbuf.mem_info);
+					printf("framerate value is %d\n",value);
+					//stream_feature_setup(STREAM_FEATURE_BIT_RATE1, &value);
+					msgbuf.ret = 0;
+					break;
+			  	}
+                                case MSG_CMD_SET_BITRATE2:
+				{
+					unsigned int value;
+					value = *(unsigned int*)(&msgbuf.mem_info);
+					//stream_feature_setup(STREAM_FEATURE_BIT_RATE2, &value);
+					msgbuf.ret = 0;
+					break;
+				}
+                                case MSG_CMD_SET_FRAMERATE1:
+				{
+					unsigned int value;
+					EncLink_ChInputFpsParam changeinputframe; 
+					value = *(unsigned int*)(&msgbuf.mem_info);
+                                  changeinputframe.chId=15;
+				       changeinputframe.inputFps = value/1000;
+                                       printf("framerate value is %d\n",changeinputframe.inputFps);
+				      System_linkControl(
+		                      encId,
+		                      ENC_LINK_CMD_SET_CODEC_INPUT_FPS,
+		                      &changeinputframe,
+		                      sizeof(EncLink_ChInputFpsParam),
+		                      TRUE);  
+					msgbuf.ret = 0;
+					break;
+				}
+				case MSG_CMD_SET_FRAMERATE2:
+				{
+					unsigned int value;
+					value = *(unsigned int*)(&msgbuf.mem_info);
+					//stream_feature_setup(STREAM_FEATURE_FRAMERATE2, &value);
+					msgbuf.ret = 0;
+					break;
+				}
+				case MSG_CMD_SET_FRAMERATE3:
+				{
+					unsigned int value;
+					value = *(unsigned int*)(&msgbuf.mem_info);
+					//stream_feature_setup(STREAM_FEATURE_FRAMERATE3, &value);
+					msgbuf.ret = 0;
+					break;
+				}
+                           case MSG_CMD_SET_OSDENABLE:
+				{
+					int value;
+					unsigned char temp;
+					temp = *(unsigned char*)(&msgbuf.mem_info);
+					value = (int)temp;
+					//stream_feature_setup(STREAM_FEATURE_OSDENABLE, &value);
+					msgbuf.ret = 0;
+					break;
+				}
+				case MSG_CMD_POLLING:
+				{
+					msgbuf.ret = 0;
+                                        printf("[8168] polling...\n");
+					break;
+				}
+				case MSG_CMD_SET_EXIT:
+				{
+					//closeflag = 1;
+					msgbuf.ret = 0;
+					break;
+				}
+                          	default:
+					printf("default case \n");
+					break;
+			}
+			if(msgbuf.Src != 0)
+			{
+				/* response */
+				msgbuf.Des = msgbuf.Src;
+				msgbuf.Src = MSG_TYPE_MSG1;
+				msgsnd(msgqid,&msgbuf,sizeof(msgbuf)-sizeof(long),0);
+			}
+			
+		}//endof  msgq process
 	}
 //This is for user input args ,when runs system server this is not supported
 #else
@@ -769,7 +878,8 @@ Void Chains_doubleChCapScEncSend(Chains_Ctrl *chainsCfg)
             	 }
 		
             }
-		Chains_ScdPrint(scdId);//This is only for temp test!!!
+		//Chains_ScdPrint(scdId);//This is only for temp test!!!
+
         }
 #endif
 
