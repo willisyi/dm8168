@@ -58,8 +58,8 @@ enum {
 	MSG_CMD_SET_BITRATE2,
 	MSG_CMD_SET_JPEG_QUALITY,
 	MSG_CMD_SET_FDETECT,
-	MSG_CMD_SET_MIRROR,
-	MSG_CMD_SET_OSDWINDOW,
+	MSG_CMD_SET_MIRROR,			//24
+	MSG_CMD_SET_OSDWINDOW,		//25
 	MSG_CMD_SET_FRAMERATE1,
 	MSG_CMD_SET_FRAMERATE2,
 	MSG_CMD_SET_FRAMERATE3,
@@ -78,11 +78,11 @@ enum {
 	MSG_CMD_SET_MOTION_LEVEL,
 	MSG_CMD_SET_MOTION_CVALUE,
 	MSG_CMD_SET_ROICFG,
-	MSG_CMD_SET_OSDTEXT_EN,
+	MSG_CMD_SET_OSDTEXT_EN,//44
 	MSG_CMD_SET_HIST_EN,
-	MSG_CMD_SET_OSDLOGO_EN,
-	MSG_CMD_SET_OSDTEXT,
-	MSG_CMD_SET_OSDPRM1,
+	MSG_CMD_SET_OSDLOGO_EN,//46
+	MSG_CMD_SET_OSDTEXT,//47
+	MSG_CMD_SET_OSDPRM1,//48,,OSD set ok
 	MSG_CMD_SET_OSDPRM2,
 	MSG_CMD_SET_OSDPRM3,
 	MSG_CMD_SET_LOCALDISPLAY,
@@ -550,15 +550,7 @@ typedef struct ALARM_MSG_BUF{
 #define ALARM_KEY		0x542c7ae6 ///< Alarm message key.
 #define AUD_MSG_KEY     0x31       ///< Audio alarm message key
 
-/*
-Pre define message usage by function
-ex:
-FuncName_Msg_Def.h
-*/
-#include <Stream_Msg_Def.h>
-#include <File_Msg_Def.h>
-#include <Sys_Msg_Def.h>
-#include <Alarm_Msg_Def.h>
+
 /**
 * @ingroup UTILITY API
 * @defgroup MSG_QUEUE Message queue.
@@ -570,7 +562,7 @@ int Msg_Init( int msgKey );
 int Msg_Kill( int qid );
 int Msg_Send( int qid, void *pdata , int size );
 int Msg_Rsv( int qid, int msg_type, void *pdata , int size );
-int Msg_Send_Rsv( int qid, int msg_type, void *pdata , int size );
+
 /** @} */
 
 #define NO_ADV_FTR	0x00
@@ -683,23 +675,3 @@ typedef struct _DynRangePrm{
 #endif
 
 #endif
-/**
-* @page MSG_QUEUE_HOW How to use message queue API?
-* 1. Call the API Msg_Init( int msgKey ) to initialize message queue.\n
-* 2. Now you can use any message queue API functions as you want.\n
-* 3. Call the API Msg_Kill( int qid )  to cleanup message queue.
-* @section MSG_QUEUE_HOW_EX Example
-* @code
-#include <Msg_Def.h>
-int main()
-{
-	int qid, key;
-	if((qid=Msg_Init(key)) < 0){
-		return -1;
-	}
-	// More message queue API
-	Msg_Kill(qid );
-	return 0;
-}
-* @endcode
-*/

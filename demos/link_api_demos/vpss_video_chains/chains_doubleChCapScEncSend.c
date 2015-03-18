@@ -17,7 +17,94 @@
 #include <string.h>
 #include <signal.h>
 #include <stdlib.h>
+#include <pthread.h>
 static UInt8 SCDChannelMonitor[16] = {0, 1, 2, 3};
+
+
+////guo :struct for poll_thread
+typedef struct PollData
+{
+	//ids
+	UInt32 swMsId[CHAINS_SW_MS_MAX_DISPLAYS];
+	UInt32 encId;
+	SwMsLink_CreateParams  swMsPrm[CHAINS_SW_MS_MAX_DISPLAYS];
+	
+}PollData;
+void *poll_thread(void *arg)
+{
+	int msgqid = 0;
+	msgqid = Msg_Init(MSG_KEY);
+	PollData *p=(PollData*)arg;
+	int msg_size = 0;
+	MSG_BUF msgbuf;
+	printf("\n[Chain Polling]Poll thread runing\n");
+	while(1)
+	{
+
+		 msg_size = msgrcv( msgqid, &msgbuf, sizeof(msgbuf)-sizeof(long),
+			       MSG_TYPE_MSG1, 0);
+        if( msg_size < 0 )
+		{
+			printf("\n!!!!!!!!!Poll_thread Receives msg failed!!!!\n");
+			if(msg_size == EINTR)
+				continue;
+			printf("msgrecv failed,errno=%d[%s]\n",errno,strerror(errno));
+			break;
+		}
+        else
+		{
+			printf("\n!!!!!!!!!cmd:%d",msgbuf.cmd);
+			switch( msgbuf.cmd )
+			{
+				
+                 case MSG_CMD_SET_MIRROR://change display layout through Web->video->mirror
+				{
+					unsigned int value;
+					printf("[Chain Polling]change layout!\n");
+					Chains_swMsSwitchLayout(&(p->swMsId), &(p->swMsPrm), 1, 0, 2);
+					msgbuf.ret = 0;
+					break;
+			  	}         
+				
+                case MSG_CMD_SET_OSDENABLE:
+				{
+					int value;
+					unsigned char temp;
+					temp = *(unsigned char*)(&msgbuf.mem_info);
+					value = (int)temp;
+					msgbuf.ret = 0;
+
+					break;
+				}
+				case MSG_CMD_POLLING:
+				{
+					msgbuf.ret = 0;
+                    printf("[8168sys_server] polling...\n");
+					break;
+				}
+				case MSG_CMD_SET_EXIT:
+				{
+					//closeflag = 1;
+					msgbuf.ret = 0;
+					break;
+				}
+                default:
+					printf("[Chain Polling]default case cmd=%d\n",msgbuf.cmd);
+					break;
+			}
+			if(msgbuf.Src != 0)
+			{
+				/* response */
+				msgbuf.Des = msgbuf.Src;
+				msgbuf.Src = MSG_TYPE_MSG1;
+				msgsnd(msgqid,&msgbuf,sizeof(msgbuf)-sizeof(long),0);
+			}
+			
+		}//endof 
+	}
+	
+}
+
 void Chains_ScdPrint(UInt32 scdId)
 {
 	    AlgLink_ScdAllChFrameStatus scdAllChFrameStatus;
@@ -34,9 +121,9 @@ void Chains_ScdPrint(UInt32 scdId)
 	{
 	 	 printf("SCD status numCh:%d, chId %d , frmResult = %d\r\n",i,scdAllChFrameStatus.chanFrameResult[i].chId,
 		 	scdAllChFrameStatus.chanFrameResult[i].frmResult);
-	}
-		
+	}		
 }
+///This func remained to test logo OSD
 void Chains_OSDConfig(AlgLink_CreateParams *DSPLinkPrm)
 {
    Ptr osdWinSrAddr[ALG_LINK_OSD_MAX_CH][CHAINS_OSD_NUM_WINDOWS];
@@ -49,7 +136,7 @@ void Chains_OSDConfig(AlgLink_CreateParams *DSPLinkPrm)
 	     /* set osd window max width and height */
             DSPLinkPrm->osdChCreateParams[i].maxWidth = CHAINS_OSD_WIN_MAX_WIDTH;
             DSPLinkPrm->osdChCreateParams[i].maxHeight = CHAINS_OSD_WIN_MAX_HEIGHT;
-            //chWinPrm->numWindows = CHAINS_OSD_NUM_WINDOWS;
+        //chWinPrm->numWindows = CHAINS_OSD_NUM_WINDOWS;
 		chWinPrm->numWindows = 1;
             /* set osd window params. In this demo # of windows set to 2 */
             chWinPrm->winPrm[0].startX             = CHAINS_OSD_WIN0_STARTX;
@@ -151,9 +238,7 @@ Void Chains_doubleChCapScEncSend(Chains_Ctrl *chainsCfg)
     UInt32 osdId;
     UInt32 ipcFramesOutVpssId, ipcFramesInDspId;	
     UInt8 osdFormat[ALG_LINK_OSD_MAX_CH];
-    //enableOsdAlgLink=gChains_ctrl.channelConf[0].enableOsd;
-    //gChains_ctrl.enableOsdAlgLink =TRUE;
-	//	    gChains_ctrl.channelConf[0].enableOsd=TRUE;
+
     memset(osdFormat,  SYSTEM_DF_YUV422I_YUYV, ALG_LINK_OSD_MAX_CH);
     if (enableOsdAlgLink) 
     {
@@ -689,142 +774,44 @@ Void Chains_doubleChCapScEncSend(Chains_Ctrl *chainsCfg)
         System_linkStart(captureId);
  	//grpx_fb_draw_demo();
 
-
-	Chains_ipcBitsLocSt();	//start RTP (or Local Storage)
-//#define SYS_SERVER
-#ifdef SYS_SERVER
-	while(1)//RUN SYSTEM SERVER
+	/***guo********poll thread  ***/
+	pthread_t poll_t;
+	int res;
+	
+	PollData poll={
+		.encId = encId,
+		.swMsId[0]=swMsId[0],
+		.swMsId[1]=swMsId[1],
+		.swMsPrm[0]=swMsPrm[0],
+		.swMsPrm[1]=swMsPrm[1]		
+		};
+	
+	res = pthread_create(&poll_t,NULL,poll_thread,(void*)&poll);
+	if(res!=0)
 	{
-		//Chains_ScdPrint(scdId);//This is only for temp test!!!
-		//sleep(2);
-		//Chains_swMsSwitchLayout(&swMsId, &swMsPrm, TRUE, FALSE, 2);
-		//Chains_ScdPrint(scdId);//This is only for temp test!!!
-		//sleep(1);
-		//Chains_swMsSwitchLayout(&swMsId, &swMsPrm, FALSE, TRUE, 2);
-		int msg_size = 0;
-		MSG_BUF msgbuf;
-
-		 msg_size = msgrcv( msgqid, &msgbuf, sizeof(msgbuf)-sizeof(long),
-			       MSG_TYPE_MSG1, 0);
-         //Something is wrong ,and print  "msgrecv failed,errno=4[Interrupted system call]"
-        	if( msg_size < 0 )
-		{
-			printf("Receive msg fail \n");
-			printf("msgrecv failed,errno=%d[%s]\n",errno,strerror(errno));
-			break;
-		}
-            else
-		{
-			switch( msgbuf.cmd )
-			{
-                                case MSG_CMD_SET_BITRATE1:
-				{
-					unsigned int value;
-					value = *(unsigned int*)(&msgbuf.mem_info);
-					printf("framerate value is %d\n",value);
-					//stream_feature_setup(STREAM_FEATURE_BIT_RATE1, &value);
-					msgbuf.ret = 0;
-					break;
-			  	}
-                                case MSG_CMD_SET_BITRATE2:
-				{
-					unsigned int value;
-					value = *(unsigned int*)(&msgbuf.mem_info);
-					//stream_feature_setup(STREAM_FEATURE_BIT_RATE2, &value);
-					msgbuf.ret = 0;
-					break;
-				}
-                                case MSG_CMD_SET_FRAMERATE1:
-				{
-					unsigned int value;
-					EncLink_ChInputFpsParam changeinputframe; 
-					value = *(unsigned int*)(&msgbuf.mem_info);
-                                  changeinputframe.chId=15;
-				       changeinputframe.inputFps = value/1000;
-                                       printf("framerate value is %d\n",changeinputframe.inputFps);
-				      System_linkControl(
-		                      encId,
-		                      ENC_LINK_CMD_SET_CODEC_INPUT_FPS,
-		                      &changeinputframe,
-		                      sizeof(EncLink_ChInputFpsParam),
-		                      TRUE);  
-					msgbuf.ret = 0;
-					break;
-				}
-				case MSG_CMD_SET_FRAMERATE2:
-				{
-					unsigned int value;
-					value = *(unsigned int*)(&msgbuf.mem_info);
-					//stream_feature_setup(STREAM_FEATURE_FRAMERATE2, &value);
-					msgbuf.ret = 0;
-					break;
-				}
-				case MSG_CMD_SET_FRAMERATE3:
-				{
-					unsigned int value;
-					value = *(unsigned int*)(&msgbuf.mem_info);
-					//stream_feature_setup(STREAM_FEATURE_FRAMERATE3, &value);
-					msgbuf.ret = 0;
-					break;
-				}
-                           case MSG_CMD_SET_OSDENABLE:
-				{
-					int value;
-					unsigned char temp;
-					temp = *(unsigned char*)(&msgbuf.mem_info);
-					value = (int)temp;
-					//stream_feature_setup(STREAM_FEATURE_OSDENABLE, &value);
-					msgbuf.ret = 0;
-					break;
-				}
-				case MSG_CMD_POLLING:
-				{
-					msgbuf.ret = 0;
-                                        printf("[8168] polling...\n");
-					break;
-				}
-				case MSG_CMD_SET_EXIT:
-				{
-					//closeflag = 1;
-					msgbuf.ret = 0;
-					break;
-				}
-                          	default:
-					printf("default case \n");
-					break;
-			}
-			if(msgbuf.Src != 0)
-			{
-				/* response */
-				msgbuf.Des = msgbuf.Src;
-				msgbuf.Src = MSG_TYPE_MSG1;
-				msgsnd(msgqid,&msgbuf,sizeof(msgbuf)-sizeof(long),0);
-			}
-			
-		}//endof  msgq process
+		perror("thread creation failed");
+		exit(-1);
 	}
-//This is for user input args ,when runs system server this is not supported
-#else
-        while(1)
-        {
-            printf("My menu:Input L to storage the video and E to stop\n"
+	/************end*/
+
+		//Chains_ScdPrint(scdId);//This is only for temp test!!!
+//This is for user input args 
+	
+	Chains_ipcBitsLocSt();	//start RTP (or Local Storage)
+    while(1)
+    {
+      printf("My menu:Input L to storage the video and E to stop\n"
 				"Input P for statistic\n");
-			
             ch = Chains_menuRunTime();
             if(ch=='0')
-
                 break;
-            if(ch=='v')
-                System_linkControl(captureId, CAPTURE_LINK_CMD_FORCE_RESET, NULL, 0, TRUE);
+           
             if(ch=='p')
             {
  				MultiCh_prfLoadPrint(TRUE,TRUE);
-            }
-	   		if(ch=='P')
-	   		{
-	   			//Vsys_printDetailedStatistics();
 				continue;
-	   		}
+            }
+
 	   		if(ch == 'd')//draw
 	   		{
 	   		 grpx_draw_box(500,500,500,500);//在HDMI2上画了出来
@@ -840,7 +827,7 @@ Void Chains_doubleChCapScEncSend(Chains_Ctrl *chainsCfg)
 			continue;
 	   		}
 
-          {
+       
          Bool switchCh = FALSE;
          Bool switchLayout = FALSE;
 		if(ch=='L')
@@ -853,35 +840,86 @@ Void Chains_doubleChCapScEncSend(Chains_Ctrl *chainsCfg)
 			Chains_ipcBitsLocStStop();
 			continue;
 		}
-            	 if(ch=='s')
-            	 {
-            		 switchLayout = TRUE;
-            		 Chains_swMsSwitchLayout(&swMsId, &swMsPrm, switchLayout, switchCh, 2);
-					 gScd_ctrl.enableMotionTracking = 0;
-					 gScd_ctrl.exitWrThr = 1;
-            		printf("switch layout\n");
+        if(ch=='s')
+        {
+            switchLayout = TRUE;
+            Chains_swMsSwitchLayout(&swMsId, &swMsPrm, switchLayout, switchCh, 2);
+			//when you changed layout ,scd is disabled
+			gScd_ctrl.enableMotionTracking = 0;
+			gScd_ctrl.exitWrThr = 1;
+			grpx_exit();
+            printf("switch layout\n");
+			continue;
+
+         }
+		if(ch == 'c')
+		{
+			gScd_ctrl.enableMotionTracking = 0;
+			gScd_ctrl.exitWrThr = 1;
+			grpx_exit();
+			continue;
+		}
+         if(ch == '1')
+         {
+            switchCh = TRUE;
+            Chains_swMsSwitchLayout(&swMsId, &swMsPrm, switchLayout, switchCh, 0);
+            continue;
+         }
+		 if(ch == 'o')
+		 {
+		 		char ch2=Chains_menuSettingOsd();
+				if( (ch2 == '0')||(ch2 == '1')||(ch2 == '3'))
+				{
+					UInt32 winId = ch2-48;
+					g_osdChParam[0].chId = 0;
+					g_osdChParam[0].winPrm[winId].enableWin = 0;
+					System_linkControl(osdId,ALG_LINK_OSD_CMD_SET_CHANNEL_WIN_PRM, 
+						&g_osdChParam[0], 
+						sizeof(AlgLink_OsdChWinParams),
+						TRUE
+					);
 					continue;
-
-            	 }
-
-            	 if(ch == '1')
-            	 {
-            		 switchCh = TRUE;
-            		 Chains_swMsSwitchLayout(&swMsId, &swMsPrm, switchLayout, switchCh, 0);
-            		 continue;
-            	 }
-            	 if(ch == '2')
-            	 {
-            		 switchCh = TRUE;
-            		 Chains_swMsSwitchLayout(&swMsId, &swMsPrm, switchLayout, switchCh, 1);
-            		 continue;
-            	 }
+				}
+				if(ch2=='x')
+				{
+					int i=0;
+					for(i=0;i<4;i++)
+					{
+						g_osdChParam[i].chId = i;
+						g_osdChParam[i].winPrm[0].enableWin = 0;
+						g_osdChParam[i].winPrm[1].enableWin = 0;
+						g_osdChParam[i].winPrm[2].enableWin = 0;
+						g_osdChParam[i].winPrm[3].enableWin = 0;
+						System_linkControl(osdId,ALG_LINK_OSD_CMD_SET_CHANNEL_WIN_PRM, 
+						&g_osdChParam[i], 
+						sizeof(AlgLink_OsdChWinParams),
+						TRUE
+						);
+					  continue;
+					}
+				}
+				if(ch2=='s')
+				{
+					int i=0;
+					for(i=0;i<4;i++)
+					{
+						g_osdChParam[i].chId = i;
+						g_osdChParam[i].winPrm[0].enableWin = 1;
+						g_osdChParam[i].winPrm[1].enableWin = 1;
+						g_osdChParam[i].winPrm[2].enableWin = 1;
+						g_osdChParam[i].winPrm[3].enableWin = 1;
+						System_linkControl(osdId,ALG_LINK_OSD_CMD_SET_CHANNEL_WIN_PRM, 
+						&g_osdChParam[i], 
+						sizeof(AlgLink_OsdChWinParams),
+						TRUE
+						);
+					  continue;
+					}//end for
+				}///end if
+		 	}///end ch==o
 		
-            }
-		//Chains_ScdPrint(scdId);//This is only for temp test!!!
+      }//end while1
 
-        }
-#endif
 
         System_linkStop(captureId);
         System_linkStop(mergeId);
