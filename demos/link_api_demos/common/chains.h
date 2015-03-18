@@ -193,6 +193,7 @@ Void chains_multiChDucatiSystemUseCaseSwMsTriDisplay2(Chains_Ctrl *chainsCfg);
 Void Chains_menuSettings();
 Void Chains_menuCurrentSettingsShow();
 char Chains_menuRunTime();
+char Chains_menuSettingOsd();
 
 unsigned int Chains_ChanInputRunTime();
 unsigned int Chains_BitRateInputRunTime();
