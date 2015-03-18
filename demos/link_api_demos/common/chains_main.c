@@ -1234,22 +1234,40 @@ char gChains_runTimeMenuXTE[] = {
     "\r\n"
     "\r\n 0: Stop Chain"
     "\r\n"
-    "\r\n p: Print Capture Statistics "
-    "\r\n b: Modify Encoder Bit Rate "
-    "\r\n f:  Modify Encoder Frame Rate "
-    "\r\n a: Audio Capture Stop"
+    "\r\n p: Print System Statistics "
     "\r\n o: Modify OSD param"
-    "\r\n s: single/double:Local Storage/change layout  "
-    "\r\n L/E: double:Local Storage/stop  "
-    "\r\n 1/2: double:change ch  "
-    "\r\n e: Stop Local Storage "
+    "\r\n s: Change Display layout "
+    "\r\n L/E: Storage or RTP start/stop "
+    "\r\n 1: Switch Display ch "
     "\r\n Enter Choice: "
 };
+char gChains_runTimeMenuOSD[] = {
+    "\r\n ========================="
+    "\r\n Chains Run-time Set OSD  "
+    "\r\n ========================="
+    "\r\n"
+    "\r\n 0: Disable all OSD of ch0"
+    "\r\n 1: Disable Logo win of ch0"
+    "\r\n 3: Disable text win of ch0"
+    "\r\n x: Disable all OSD       "
+    "\r\n s: set ch[0-3] windows on "
+    "\r\n Enter Choice: "
+};
+
 //---------------------------------------------------------------
 char Chains_menuRunTime()
 {
     char ch[MAX_INPUT_STR_SIZE];
     printf(gChains_runTimeMenuXTE);
+    fgets(ch, MAX_INPUT_STR_SIZE, stdin);
+    if(ch[1] != '\n' || ch[0] == '\n')
+    ch[0] = '\n';
+    return ch[0];
+}
+char Chains_menuSettingOsd()
+{
+	char ch[MAX_INPUT_STR_SIZE];
+    printf(gChains_runTimeMenuOSD);
     fgets(ch, MAX_INPUT_STR_SIZE, stdin);
     if(ch[1] != '\n' || ch[0] == '\n')
     ch[0] = '\n';
