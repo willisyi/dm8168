@@ -961,7 +961,7 @@ static Int32    RecordAudio(Uint8 *buffer, Int32 *numSamples)
 
     if (capture_handle)
     {
-        if ((err = snd_pcm_readi (capture_handle, buffer, *numSamples)) != *numSamples)
+        if ((err = snd_pcm_readi (capture_handle, buffer, *numSamples)) != *numSamples)	//length of frames,*numSamples*2=length of data
         {
             //printf (" AUDIO >> read from audio interface failed (%s)\n", snd_strerror (err));
             *numSamples = 0;
